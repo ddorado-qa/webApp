@@ -1,0 +1,178 @@
+=======================================
+INICIO FICHERO >> ./dashboard-frontend/Dockerfile
+=======================================
+# Dockerfile para Dashboard Frontend
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+FROM nginx:stable-alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx","-g","daemon off;"]
+=======================================
+FIN FICHERO >> ./dashboard-frontend/Dockerfile
+=======================================
+
+=======================================
+INICIO FICHERO >> ./order-frontend/Dockerfile
+=======================================
+# Dockerfile para Order Frontend
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+FROM nginx:stable-alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx","-g","daemon off;"]
+=======================================
+FIN FICHERO >> ./order-frontend/Dockerfile
+=======================================
+
+=======================================
+INICIO FICHERO >> ./inventory-frontend/Dockerfile
+=======================================
+# Dockerfile para Inventory Frontend
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+FROM nginx:stable-alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx","-g","daemon off;"]
+=======================================
+FIN FICHERO >> ./inventory-frontend/Dockerfile
+=======================================
+
+=======================================
+INICIO FICHERO >> ./login-frontend/Dockerfile
+=======================================
+# Dockerfile para Login Frontend
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+FROM nginx:stable-alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx","-g","daemon off;"]
+=======================================
+FIN FICHERO >> ./login-frontend/Dockerfile
+=======================================
+
+=======================================
+INICIO FICHERO >> ./dashboard-backend/Dockerfile
+=======================================
+# Dockerfile para Dashboard Backend
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE 4000
+CMD ["npm","run","dev"]
+=======================================
+FIN FICHERO >> ./dashboard-backend/Dockerfile
+=======================================
+
+=======================================
+INICIO FICHERO >> ./order-backend/Dockerfile
+=======================================
+# Dockerfile para Order Backend
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE 4001
+CMD ["npm","run","dev"]
+=======================================
+FIN FICHERO >> ./order-backend/Dockerfile
+=======================================
+
+=======================================
+INICIO FICHERO >> ./inventory-backend/Dockerfile
+=======================================
+# Dockerfile para Inventory Backend
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE 4002
+CMD ["npm","run","dev"]
+=======================================
+FIN FICHERO >> ./inventory-backend/Dockerfile
+=======================================
+
+=======================================
+INICIO FICHERO >> ./docker-compose.yml
+=======================================
+version: "3.9"
+
+services:
+  dashboard-frontend:
+    build:
+      context: ./dashboard-frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+
+  order-frontend:
+    build:
+      context: ./order-frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:80"
+
+  inventory-frontend:
+    build:
+      context: ./inventory-frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3002:80"
+
+  login-frontend:
+    build:
+      context: ./login-frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3003:80"
+
+  dashboard-backend:
+    build:
+      context: ./dashboard-backend
+      dockerfile: Dockerfile
+    ports:
+      - "4000:4000"
+
+  order-backend:
+    build:
+      context: ./order-backend
+      dockerfile: Dockerfile
+    ports:
+      - "4001:4001"
+
+  inventory-backend:
+    build:
+      context: ./inventory-backend
+      dockerfile: Dockerfile
+    ports:
+      - "4002:4002"
+=======================================
+FIN FICHERO >> ./docker-compose.yml
+=======================================

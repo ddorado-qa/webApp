@@ -1,0 +1,188 @@
+PROMPT A USAR (copiar desde aquí):
+
+Genera en una única respuesta una aplicación web 100% funcional con estas especificaciones y este formato obligatorio:
+
+Código 100% funcional en formato exacto:
+TODO EL CODIGO DENTRO DEL MISMO MARKDOWN
+markdown
+
+INICIO FICHERO >> .\ruta\fichero.ext
+// Comentarios claros
+CÓDIGO COMPLETO ACTUALIZADO
+FIN FICHERO >> .\ruta\fichero.ext
+
+Requisitos funcionales
+
+Arquitectura microfrontends (React + Webpack Module Federation, sin CDNs) y microbackends (Node.js + Express) con CRUD completo de dos dominios de ejemplo: users y items.
+
+BDD = Base de Datos: PostgreSQL (en contenedor) para almacenar/leer datos de la aplicación. Incluye migraciones y semillas.
+
+Todos los elementos interactivos (botones, inputs, selects, toggles, modales, tablas) deben incluir datetest-id único para facilitar QA.
+
+Componentes UI suficientes para pruebas de QA con Playwright: menús desplegables, formularios con validación, paginación, tabla con ordenación/búsqueda, toasts, diálogos de confirmación.
+
+Sección de “Reports” dentro del microfrontend dashboard para visualizar resultados de tests de Playwright con un reporter HTML propio (similar a Allure pero 100% customizable), leyendo artefactos JSON/trace generados por Playwright.
+
+Requisitos no funcionales
+
+Todo dockerizado: un Dockerfile por microservicio y microfrontend, un docker-compose.yml que:
+
+Levante api-gateway, users-api, items-api, dashboard-mfe, admin-mfe, postgres, reporter.
+
+Defina red interna, volúmenes para persistencia de BD, healthchecks y dependencias (depends_on con condition: service_healthy).
+
+Makefile con targets:
+
+make bootstrap (instala dependencias de todos los paquetes con npm ci),
+
+make up, make down, make restart, make logs,
+
+make seed, make migrate,
+
+make test (ejecuta Playwright en contenedor), make test:ui (modo UI local),
+
+make report (genera/abre el reporte HTML propio),
+
+make clean (limpia node_modules, dist, artefactos), make prune (prune de docker).
+
+Sin dependencias externas (no SaaS, no CDNs). Todo debe funcionar offline en local.
+
+Instalación automática: scripts de postinstall para construir frontends/backends, generar tipos, y preparar el reporter.
+
+Calidad: ESLint/Prettier configurados localmente; configuración TypeScript compartida.
+
+QA: Playwright + POM + Auto-Healing
+
+Estructura POM (Page Object Model) con carpeta tests/:
+
+pom/ con objetos de página reutilizables para LoginPage, UsersPage, ItemsPage, Header, Modal, Table.
+
+Auto-Healing: un helper que reintenta selectores y usa fallback por datetest-id, role, texto visible y rutas de árbol; loguea reemplazos y persiste un mapa de curación para siguientes corridas.
+
+Tests E2E: flujos de autenticación fake (frontend), CRUD de users y items, validaciones de formularios, ordenación/filtrado, paginación, modales de confirmación, toasts, errores 4xx/5xx simulados.
+
+Reporter:
+
+Un reporter Playwright personalizado que exporta resultados a JSON.
+
+Un servidor/SPA reporter que renderiza timeline, suites, pasos, trazas y screenshots; filtros por estado, duración, etiqueta; temas (claro/oscuro) y plantillas (100% personalizables).
+
+Enlace desde dashboard a la ruta /reports.
+
+Seguridad y Gateway
+
+api-gateway con Express que enruta a users-api y items-api (/api/users/*, /api/items/*), aplica CORS, rate limit básico, logging y validación schema (Zod/Joi).
+
+Simulación de auth local (token dummy guardado en localStorage) solo para el frontend.
+
+Datos y Migraciones
+
+postgres con DB appdb, usuario/clave definidos en .env.
+
+Carpeta db/migrations y db/seeds en users-api e items-api (Knex o SQL puro). Scripts npm run migrate y npm run seed.
+
+Microfrontends
+
+dashboard-mfe: vista general, navegación, tablas de users y items, formularios CRUD, sección Reports y página de Health (muestra estados de servicios).
+
+admin-mfe: administración avanzada (bulk import/export CSV/JSON local, toggles de features, visor de logs).
+
+Webpack Module Federation: dashboard-mfe consume remotos de admin-mfe.
+
+Atributos datetest-id en todos los elementos interactivos y contenedores relevantes.
+
+Microbackends
+
+users-api y items-api: Express + TypeScript, rutas CRUD (GET /, GET /:id, POST, PUT, DELETE), validaciones, controladores, servicios, DAOs.
+
+Tests de contrato simples (supertest) locales.
+
+Scripts y Desarrollo
+
+root/package.json con workspaces (packages/*, services/*, apps/*).
+
+Comandos útiles:
+
+npm run dev (frontends en modo dev con federation),
+
+npm run build, npm run start,
+
+npm run test:e2e, npm run report.
+
+Entregables obligatorios (en el mismo Markdown)
+
+TODOS los ficheros del repo, uno por bloque, con el formato:
+
+=======================================
+INICIO FICHERO >> .\ruta\fichero.ext
+=======================================
+// Comentarios claros
+CÓDIGO COMPLETO ACTUALIZADO
+=======================================
+FIN FICHERO >> .\ruta\fichero.ext
+=======================================
+
+
+Incluye, como mínimo:
+
+README.md con instrucciones claras (Docker/Make/Playwright).
+
+Makefile, docker-compose.yml, .env.example.
+
+Dockerfiles de api-gateway, users-api, items-api, dashboard-mfe, admin-mfe, reporter.
+
+packages/ compartidos (eslint-config, tsconfig, ui-kit con componentes con datetest-id).
+
+apps/dashboard-mfe y apps/admin-mfe (React + TS + Webpack + MF).
+
+services/users-api, services/items-api, services/api-gateway.
+
+services/reporter (server + SPA para reportes Playwright).
+
+tests/playwright.config.ts, tests/pom/*, tests/specs/*, tests/utils/autoheal.ts, tests/reporters/custom-reporter.ts.
+
+Migraciones y semillas para Postgres.
+
+Seeds iniciales para users (3) e items (5) con datos coherentes.
+
+Criterios de aceptación
+
+make up levanta todo y expone:
+
+dashboard-mfe en http://localhost:8080,
+
+admin-mfe en http://localhost:8081 (remoto federado),
+
+api-gateway en http://localhost:3000,
+
+reporter en http://localhost:9090,
+
+postgres mapeado a localhost:5432.
+
+make test ejecuta Playwright dentro de contenedor, genera artefactos (/reports/raw), y make report sirve el reporte HTML personalizado en http://localhost:9090.
+
+Todos los elementos interactivos tienen datetest-id único (validado por un test que falla si hay duplicados).
+
+CRUDs operativos vía UI y API, con validación y mensajes de error.
+
+Sin uso de CDNs ni servicios externos (todo local/offline).
+
+Notas de implementación
+
+Fijar versiones de Node (LTS), Playwright y Postgres en los Dockerfiles.
+
+Usar TypeScript en todo (front/back/tests).
+
+Implementar auto-healing con:
+
+Reintentos exponenciales,
+
+Fallbacks de selectores (prioriza datetest-id, luego getByRole, texto visible, CSS),
+
+Persistencia de un selector-map.json actualizado tras cada curación.
+
+El reporter debe aceptar plantillas (Handlebars/EJS local) y temas (CSS variables).
+
+Lint + format via npm run lint y npm run format.
+
+Recuerda: entrega todo en un solo mensaje, con todos los ficheros, sin placeholders, listo para make up y make test.
