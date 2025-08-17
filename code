@@ -1,358 +1,286 @@
 =======================================
 INICIO FICHERO >> ./docker-compose.yml
 =======================================
-// Docker Compose levantando todos los microfrontends y microbackends
-version: '3.9'
+// Docker Compose para levantar backend, frontend y tests
+version: '3.8'
 
 services:
-  dashboard-frontend:
-    build: ./dashboard-frontend
-    container_name: dashboard-frontend
+  backend:
+    build: ./backend
     ports:
-      - "3001:5173"
+      - "4000:4000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - NODE_ENV=development
+    command: npm run dev
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+    environment:
+      - NODE_ENV=development
+    command: npm run dev
+
+  tests:
+    build: ./tests
     depends_on:
-      - dashboard-backend
-
-  order-frontend:
-    build: ./order-frontend
-    container_name: order-frontend
-    ports:
-      - "3002:5173"
-    depends_on:
-      - order-backend
-
-  inventory-frontend:
-    build: ./inventory-frontend
-    container_name: inventory-frontend
-    ports:
-      - "3003:5173"
-    depends_on:
-      - inventory-backend
-
-  login-frontend:
-    build: ./login-frontend
-    container_name: login-frontend
-    ports:
-      - "3004:5173"
-    depends_on:
-      - dashboard-backend
-
-  dashboard-backend:
-    build: ./dashboard-backend
-    container_name: dashboard-backend
-    ports:
-      - "4001:4000"
-
-  order-backend:
-    build: ./order-backend
-    container_name: order-backend
-    ports:
-      - "4002:4000"
-
-  inventory-backend:
-    build: ./inventory-backend
-    container_name: inventory-backend
-    ports:
-      - "4003:4000"
+      - backend
+      - frontend
+    command: npx playwright test
+    volumes:
+      - ./tests:/app
+    environment:
+      - BASE_URL=http://frontend:3000
 =======================================
 FIN FICHERO >> ./docker-compose.yml
 =======================================
 
 =======================================
-INICIO FICHERO >> ./scripts/init-project.sh
-=======================================
-// Script de inicialización de proyecto y dependencias
-#!/bin/bash
-set -e
-
-echo "Instalando dependencias de todos los microfrontends y microbackends..."
-
-for folder in dashboard-frontend order-frontend inventory-frontend login-frontend dashboard-backend order-backend inventory-backend
-do
-  echo "Instalando en $folder..."
-  cd $folder
-  npm install
-  cd ..
-done
-
-echo "Proyecto inicializado correctamente."
-=======================================
-FIN FICHERO >> ./scripts/init-project.sh
-=======================================
-
-=======================================
-INICIO FICHERO >> ./scripts/fix-deprecated.sh
-=======================================
-// Script para actualizar dependencias obsoletas
-#!/bin/bash
-set -e
-
-echo "Actualizando dependencias a la última versión..."
-
-for folder in dashboard-frontend order-frontend inventory-frontend login-frontend dashboard-backend order-backend inventory-backend
-do
-  echo "Actualizando $folder..."
-  cd $folder
-  npm update
-  cd ..
-done
-
-echo "Dependencias actualizadas."
-=======================================
-FIN FICHERO >> ./scripts/fix-deprecated.sh
-=======================================
-
-=======================================
-INICIO FICHERO >> ./scripts/start-all.sh
-=======================================
-// Script para levantar todos los servicios con Docker Compose
-#!/bin/bash
-set -e
-echo "Levantando todos los microfrontends y microbackends..."
-docker-compose up --build
-=======================================
-FIN FICHERO >> ./scripts/start-all.sh
-=======================================
-
-=======================================
-INICIO FICHERO >> ./README.md
-=======================================
-# Proyecto Full-Stack Microfrontends / Microbackends
-
-## Estructura
-- **Microfrontends**: React + Vite + Tailwind + TypeScript
-  - dashboard-frontend, order-frontend, inventory-frontend, login-frontend
-- **Microbackends**: Node + Express + TypeScript
-  - dashboard-backend, order-backend, inventory-backend
-- **Scripts**:
-  - init-project.sh: Instala dependencias
-  - fix-deprecated.sh: Actualiza dependencias
-  - start-all.sh: Levanta todos los servicios con Docker
-
-## Instalación
-chmod +x scripts/*.sh
-./scripts/init-project.sh
-Levantar todos los servicios
-bash
-Copiar
-Editar
-./scripts/start-all.sh
-Microfrontends
-Dashboard: http://localhost:3001
-
-Order: http://localhost:3002
-
-Inventory: http://localhost:3003
-
-Login: http://localhost:3004
-
-Microbackends
-Dashboard API: http://localhost:4001
-
-Order API: http://localhost:4002
-
-Inventory API: http://localhost:4003
-
-CI/CD
-Configurado con GitHub Actions para tests y build
-=======================================
-FIN FICHERO >> ./README.md
-=======================================
-
-=======================================
-INICIO FICHERO >> ./dashboard-frontend/Dockerfile
-=======================================
-
-FROM node:20-alpine AS build
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
-
-FROM nginx:stable-alpine
-COPY --from=build /app/dist /usr/share/nginx/html
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
-=======================================
-FIN FICHERO >> ./dashboard-frontend/Dockerfile
-=======================================
-INICIO FICHERO >> ./dashboard-backend/Dockerfile
-=======================================
-FROM node:20-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-EXPOSE 4000
-CMD ["npm", "run", "dev"]
-=======================================
-FIN FICHERO >> ./dashboard-backend/Dockerfile
-=======================================
-
-=======================================
-INICIO FICHERO >> ./dashboard-frontend/package.json
+INICIO FICHERO >> ./backend/package.json
 =======================================
 {
-"name": "dashboard-frontend",
-"version": "1.0.0",
-"scripts": {
-"dev": "vite",
-"build": "vite build",
-"start": "vite preview",
-"test": "vitest"
-},
-"dependencies": {
-"react": "^18.3.0",
-"react-dom": "^18.3.0"
-},
-"devDependencies": {
-"typescript": "^5.2.0",
-"vite": "^5.1.0",
-"tailwindcss": "^3.4.0",
-"@vitejs/plugin-react": "^4.0.0",
-"vitest": "^0.43.0"
-}
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "sqlite3": "^5.1.6",
+    "cors": "^2.8.5",
+    "body-parser": "^1.20.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
 }
 =======================================
-FIN FICHERO >> ./dashboard-frontend/package.json
+FIN FICHERO >> ./backend/package.json
 =======================================
-INICIO FICHERO >> ./dashboard-frontend/vite.config.ts
+
+=======================================
+INICIO FICHERO >> ./backend/index.js
+=======================================
+// Backend Node.js + Express + SQLite
+const express = require('express');
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const sqlite3 = require('sqlite3').verbose();
+const app = express();
+const PORT = 4000;
+
+app.use(cors());
+app.use(bodyParser.json());
+
+// Base de datos SQLite en memoria para desarrollo
+const db = new sqlite3.Database(':memory:');
+
+// Crear tabla de usuarios
+db.serialize(() => {
+  db.run(`CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE,
+    password TEXT
+  )`);
+});
+
+// CRUD LOGIN/REGISTER
+app.post('/register', (req, res) => {
+  const { username, password } = req.body;
+  db.run(`INSERT INTO users(username,password) VALUES (?,?)`, [username,password], function(err){
+    if(err) return res.status(400).json({error: err.message});
+    res.json({id: this.lastID, username});
+  });
+});
+
+app.post('/login', (req, res) => {
+  const { username, password } = req.body;
+  db.get(`SELECT * FROM users WHERE username=? AND password=?`, [username,password], (err,row)=>{
+    if(err) return res.status(500).json({error: err.message});
+    if(!row) return res.status(401).json({error: "Invalid credentials"});
+    res.json({id: row.id, username: row.username});
+  });
+});
+
+app.get('/users', (req,res)=>{
+  db.all(`SELECT id,username FROM users`, [], (err,rows)=>{
+    if(err) return res.status(500).json({error: err.message});
+    res.json(rows);
+  });
+});
+
+app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
+=======================================
+FIN FICHERO >> ./backend/index.js
+=======================================
+
+=======================================
+INICIO FICHERO >> ./frontend/package.json
+=======================================
+{
+  "name": "frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "axios": "^1.5.0"
+  },
+  "devDependencies": {
+    "vite": "^4.4.9",
+    "@vitejs/plugin-react": "^4.1.0"
+  }
+}
+=======================================
+FIN FICHERO >> ./frontend/package.json
+=======================================
+
+=======================================
+INICIO FICHERO >> ./frontend/vite.config.js
 =======================================
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
-plugins: [react()],
-server: {
-port: 5173
-}
+  plugins: [react()],
+  server: {
+    port: 3000
+  }
 })
 =======================================
-FIN FICHERO >> ./dashboard-frontend/vite.config.ts
+FIN FICHERO >> ./frontend/vite.config.js
 =======================================
-INICIO FICHERO >> ./dashboard-frontend/tailwind.config.js
+
 =======================================
-module.exports = {
-content: ["./index.html","./src/**/*.{ts,tsx}"],
-theme: { extend: {} },
-plugins: []
-}
-=======================================
-FIN FICHERO >> ./dashboard-frontend/tailwind.config.js
-=======================================
-INICIO FICHERO >> ./dashboard-frontend/tsconfig.json
-=======================================
-{
-"compilerOptions": {
-"target": "ESNext",
-"module": "ESNext",
-"jsx": "react-jsx",
-"strict": true,
-"moduleResolution": "node",
-"esModuleInterop": true,
-"skipLibCheck": true,
-"forceConsistentCasingInFileNames": true,
-"baseUrl": "./src"
-},
-"include": ["src"]
-}
-=======================================
-FIN FICHERO >> ./dashboard-frontend/tsconfig.json
-=======================================
-INICIO FICHERO >> ./dashboard-frontend/src/main.tsx
+INICIO FICHERO >> ./frontend/src/main.jsx
 =======================================
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './App'
-import './index.css'
+import App from './App.jsx'
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-<React.StrictMode>
-<App />
-</React.StrictMode>
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
 )
 =======================================
-FIN FICHERO >> ./dashboard-frontend/src/main.tsx
+FIN FICHERO >> ./frontend/src/main.jsx
 =======================================
-INICIO FICHERO >> ./dashboard-frontend/src/App.tsx
-=======================================
-import React from 'react'
 
-function App() {
-return (
-<div className="p-4 text-center">
-<h1 className="text-2xl font-bold">Dashboard Microfrontend</h1>
-<p>¡Proyecto listo con microfrontends y microbackends dockerizados!</p>
-</div>
-)
+=======================================
+INICIO FICHERO >> ./frontend/src/App.jsx
+=======================================
+import React, { useState } from 'react';
+import axios from 'axios';
+
+export default function App() {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
+
+  const handleRegister = async () => {
+    try {
+      const res = await axios.post('http://localhost:4000/register', { username, password });
+      setMessage(`Registered user: ${res.data.username}`);
+    } catch (err) {
+      setMessage(err.response?.data?.error || 'Error');
+    }
+  };
+
+  const handleLogin = async () => {
+    try {
+      const res = await axios.post('http://localhost:4000/login', { username, password });
+      setMessage(`Logged in as: ${res.data.username}`);
+    } catch (err) {
+      setMessage(err.response?.data?.error || 'Error');
+    }
+  };
+
+  return (
+    <div style={{padding: '2rem'}}>
+      <h1>Microfrontend Starter</h1>
+      <div>
+        <input datatest-id="username" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
+      </div>
+      <div>
+        <input datatest-id="password" type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
+      </div>
+      <div style={{marginTop:'1rem'}}>
+        <button datatest-id="registerBtn" onClick={handleRegister}>Register</button>
+        <button datatest-id="loginBtn" onClick={handleLogin} style={{marginLeft:'1rem'}}>Login</button>
+      </div>
+      <div style={{marginTop:'1rem'}} datatest-id="message">{message}</div>
+    </div>
+  );
 }
+=======================================
+FIN FICHERO >> ./frontend/src/App.jsx
+=======================================
 
-export default App
 =======================================
-FIN FICHERO >> ./dashboard-frontend/src/App.tsx
-=======================================
-INICIO FICHERO >> ./dashboard-backend/package.json
+INICIO FICHERO >> ./tests/package.json
 =======================================
 {
-"name": "dashboard-backend",
-"version": "1.0.0",
-"scripts": {
-"dev": "ts-node-dev --respawn src/server.ts",
-"start": "node dist/server.js",
-"build": "tsc",
-"test": "jest"
-},
-"dependencies": {
-"express": "^4.18.3",
-"cors": "^2.8.5"
-},
-"devDependencies": {
-"typescript": "^5.2.0",
-"ts-node-dev": "^2.0.0",
-"@types/express": "^4.17.20",
-"@types/node": "^20.4.0",
-"jest": "^29.6.1",
-"@types/jest": "^29.5.3",
-"ts-jest": "^29.1.0"
-}
+  "name": "tests",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "npx playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.0"
+  }
 }
 =======================================
-FIN FICHERO >> ./dashboard-backend/package.json
+FIN FICHERO >> ./tests/package.json
 =======================================
-INICIO FICHERO >> ./dashboard-backend/tsconfig.json
-=======================================
-{
-"compilerOptions": {
-"target": "ES2020",
-"module": "CommonJS",
-"outDir": "dist",
-"rootDir": "src",
-"strict": true,
-"esModuleInterop": true,
-"forceConsistentCasingInFileNames": true
-},
-"include": ["src"]
-}
-=======================================
-FIN FICHERO >> ./dashboard-backend/tsconfig.json
-=======================================
-INICIO FICHERO >> ./dashboard-backend/src/server.ts
-=======================================
-import express from 'express'
-import cors from 'cors'
 
-const app = express()
-app.use(cors())
-app.use(express.json())
-
-app.get('/api/health', (req, res) => {
-res.json({ status: 'ok', service: 'dashboard-backend' })
-})
-
-app.listen(4000, () => {
-console.log('Dashboard backend running on port 4000')
-})
 =======================================
-FIN FICHERO >> ./dashboard-backend/src/server.ts
+INICIO FICHERO >> ./tests/playwright.config.js
+=======================================
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './tests',
+  use: {
+    baseURL: process.env.BASE_URL || 'http://localhost:3000',
+    headless: true,
+    screenshot: 'only-on-failure',
+    trace: 'on-first-retry'
+  },
+  retries: 1,
+  reporter: [['list'], ['html', { open: 'never' }]],
+});
+=======================================
+FIN FICHERO >> ./tests/playwright.config.js
+=======================================
+
+=======================================
+INICIO FICHERO >> ./tests/tests/app.spec.js
+=======================================
+import { test, expect } from '@playwright/test';
+
+test('Register and Login flow', async ({ page }) => {
+  await page.goto('/');
+  await page.fill('[datatest-id="username"]', 'user1');
+  await page.fill('[datatest-id="password"]', 'pass1');
+  await page.click('[datatest-id="registerBtn"]');
+  await expect(page.locator('[datatest-id="message"]')).toContainText('Registered user');
+
+  await page.fill('[datatest-id="username"]', 'user1');
+  await page.fill('[datatest-id="password"]', 'pass1');
+  await page.click('[datatest-id="loginBtn"]');
+  await expect(page.locator('[datatest-id="message"]')).toContainText('Logged in as');
+});
+=======================================
+FIN FICHERO >> ./tests/tests/app.spec.js
 =======================================

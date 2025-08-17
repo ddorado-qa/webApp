@@ -1,178 +1,567 @@
 =======================================
-INICIO FICHERO >> ./dashboard-frontend/Dockerfile
-=======================================
-# Dockerfile para Dashboard Frontend
-FROM node:20-alpine AS builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
-
-FROM nginx:stable-alpine
-COPY --from=builder /app/dist /usr/share/nginx/html
-EXPOSE 80
-CMD ["nginx","-g","daemon off;"]
-=======================================
-FIN FICHERO >> ./dashboard-frontend/Dockerfile
-=======================================
-
-=======================================
-INICIO FICHERO >> ./order-frontend/Dockerfile
-=======================================
-# Dockerfile para Order Frontend
-FROM node:20-alpine AS builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
-
-FROM nginx:stable-alpine
-COPY --from=builder /app/dist /usr/share/nginx/html
-EXPOSE 80
-CMD ["nginx","-g","daemon off;"]
-=======================================
-FIN FICHERO >> ./order-frontend/Dockerfile
-=======================================
-
-=======================================
-INICIO FICHERO >> ./inventory-frontend/Dockerfile
-=======================================
-# Dockerfile para Inventory Frontend
-FROM node:20-alpine AS builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
-
-FROM nginx:stable-alpine
-COPY --from=builder /app/dist /usr/share/nginx/html
-EXPOSE 80
-CMD ["nginx","-g","daemon off;"]
-=======================================
-FIN FICHERO >> ./inventory-frontend/Dockerfile
-=======================================
-
-=======================================
-INICIO FICHERO >> ./login-frontend/Dockerfile
-=======================================
-# Dockerfile para Login Frontend
-FROM node:20-alpine AS builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
-
-FROM nginx:stable-alpine
-COPY --from=builder /app/dist /usr/share/nginx/html
-EXPOSE 80
-CMD ["nginx","-g","daemon off;"]
-=======================================
-FIN FICHERO >> ./login-frontend/Dockerfile
-=======================================
-
-=======================================
-INICIO FICHERO >> ./dashboard-backend/Dockerfile
-=======================================
-# Dockerfile para Dashboard Backend
-FROM node:20-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-EXPOSE 4000
-CMD ["npm","run","dev"]
-=======================================
-FIN FICHERO >> ./dashboard-backend/Dockerfile
-=======================================
-
-=======================================
-INICIO FICHERO >> ./order-backend/Dockerfile
-=======================================
-# Dockerfile para Order Backend
-FROM node:20-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-EXPOSE 4001
-CMD ["npm","run","dev"]
-=======================================
-FIN FICHERO >> ./order-backend/Dockerfile
-=======================================
-
-=======================================
-INICIO FICHERO >> ./inventory-backend/Dockerfile
-=======================================
-# Dockerfile para Inventory Backend
-FROM node:20-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-EXPOSE 4002
-CMD ["npm","run","dev"]
-=======================================
-FIN FICHERO >> ./inventory-backend/Dockerfile
-=======================================
-
-=======================================
 INICIO FICHERO >> ./docker-compose.yml
 =======================================
-version: "3.9"
+# Docker Compose para levantar backend, frontend y tests.
+# Notas importantes:
+# - Protegemos node_modules en los contenedores con volúmenes específicos
+#   para evitar sobrescrituras desde macOS (darwin) -> linux mismatch.
+# - El servicio "tests" no monta ./tests para no sobreescribir node_modules
+#   instalados durante el build (evita MODULE_NOT_FOUND).
+version: '3.9'
 
 services:
-  dashboard-frontend:
-    build:
-      context: ./dashboard-frontend
-      dockerfile: Dockerfile
-    ports:
-      - "3000:80"
-
-  order-frontend:
-    build:
-      context: ./order-frontend
-      dockerfile: Dockerfile
-    ports:
-      - "3001:80"
-
-  inventory-frontend:
-    build:
-      context: ./inventory-frontend
-      dockerfile: Dockerfile
-    ports:
-      - "3002:80"
-
-  login-frontend:
-    build:
-      context: ./login-frontend
-      dockerfile: Dockerfile
-    ports:
-      - "3003:80"
-
-  dashboard-backend:
-    build:
-      context: ./dashboard-backend
-      dockerfile: Dockerfile
+  backend:
+    build: ./backend
+    container_name: microapp-backend
     ports:
       - "4000:4000"
+    volumes:
+      - ./backend:/app:delegated
+      - backend_node_modules:/app/node_modules
+    environment:
+      - NODE_ENV=development
+    command: npm run dev
 
-  order-backend:
-    build:
-      context: ./order-backend
-      dockerfile: Dockerfile
+  frontend:
+    build: ./frontend
+    container_name: microapp-frontend
     ports:
-      - "4001:4001"
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://backend:4000
+    volumes:
+      - ./frontend:/app:delegated
+      - frontend_node_modules:/app/node_modules
+    command: npm run dev
 
-  inventory-backend:
-    build:
-      context: ./inventory-backend
-      dockerfile: Dockerfile
-    ports:
-      - "4002:4002"
+  tests:
+    build: ./tests
+    container_name: microapp-tests
+    depends_on:
+      - backend
+      - frontend
+    # Ejecutamos tests dentro del contenedor (no montamos /app para no sobreescribir node_modules)
+    command: npx playwright test --reporter=list
+    environment:
+      - BASE_URL=http://frontend:3000
+    # No montar ./tests en /app para preservar instalaciones hechas en build
+    # Si necesitas editar tests desde host, quítalo (pero entonces re-instala deps en runtime).
+    tty: true
+
+volumes:
+  backend_node_modules:
+  frontend_node_modules:
 =======================================
 FIN FICHERO >> ./docker-compose.yml
+=======================================
+
+=======================================
+INICIO FICHERO >> ./.dockerignore
+=======================================
+node_modules
+**/node_modules
+dist
+*.log
+.DS_Store
+.vscode
+.env
+=======================================
+FIN FICHERO >> ./.dockerignore
+=======================================
+
+=======================================
+INICIO FICHERO >> ./backend/Dockerfile
+=======================================
+# Backend: Node + Express + SQLite
+FROM node:20-bullseye
+
+WORKDIR /app
+
+# Copiar package.json primero para aprovechar la cache
+COPY package.json package-lock.json* ./
+
+# Instalar dependencias en la plataforma linux del contenedor
+RUN npm install
+
+# Copiar el resto del backend
+COPY . .
+
+# Exponer puerto
+EXPOSE 4000
+
+# Comando por defecto (desarrollo con nodemon)
+CMD ["npm", "run", "dev"]
+=======================================
+FIN FICHERO >> ./backend/Dockerfile
+=======================================
+
+=======================================
+INICIO FICHERO >> ./backend/package.json
+=======================================
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "Backend simple Express + SQLite",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "sqlite3": "^5.1.6"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
+=======================================
+FIN FICHERO >> ./backend/package.json
+=======================================
+
+=======================================
+INICIO FICHERO >> ./backend/index.js
+=======================================
+// Backend Node.js + Express + SQLite (CRUD básico para usuarios)
+// Atención: para simplicidad usamos SQLite en fichero ./data.db (persistente en volumen local)
+const express = require('express');
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
+
+const app = express();
+const PORT = process.env.PORT || 4000;
+
+app.use(cors());
+app.use(bodyParser.json());
+
+// Base de datos SQLite en fichero (persistente dentro del contenedor o en tu carpeta de proyecto)
+const DB_PATH = path.join(__dirname, 'data.db');
+const db = new sqlite3.Database(DB_PATH);
+
+// Inicializar tabla
+db.serialize(() => {
+  db.run(`CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE,
+    password TEXT
+  )`);
+});
+
+// Registro
+app.post('/register', (req, res) => {
+  const { username, password } = req.body || {};
+  if(!username || !password) return res.status(400).json({ error: 'username and password required' });
+  db.run(`INSERT INTO users(username,password) VALUES (?,?)`, [username,password], function(err){
+    if(err) return res.status(400).json({ error: err.message });
+    res.json({ id: this.lastID, username });
+  });
+});
+
+// Login
+app.post('/login', (req, res) => {
+  const { username, password } = req.body || {};
+  if(!username || !password) return res.status(400).json({ error: 'username and password required' });
+  db.get(`SELECT id, username FROM users WHERE username=? AND password=?`, [username,password], (err,row)=>{
+    if(err) return res.status(500).json({ error: err.message });
+    if(!row) return res.status(401).json({ error: 'Invalid credentials' });
+    res.json(row);
+  });
+});
+
+// List users (sin passwords)
+app.get('/users', (req, res) => {
+  db.all(`SELECT id, username FROM users`, [], (err, rows) => {
+    if(err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+// Health
+app.get('/health', (req,res) => res.json({ status: 'ok' }));
+
+app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
+=======================================
+FIN FICHERO >> ./backend/index.js
+=======================================
+
+=======================================
+INICIO FICHERO >> ./frontend/Dockerfile
+=======================================
+# Frontend: React + Vite
+FROM node:20-bullseye
+
+WORKDIR /app
+
+# Copiar package.json antes para cache layer
+COPY package.json package-lock.json* ./
+
+# Instalar dependencias (en la plataforma linux del contenedor)
+RUN npm install
+
+# Copiar el resto de la app
+COPY . .
+
+# Exponer puerto Vite
+EXPOSE 3000
+
+# Ejecutar dev server (vite --host para escuchar en 0.0.0.0)
+CMD ["npm", "run", "dev"]
+=======================================
+FIN FICHERO >> ./frontend/Dockerfile
+=======================================
+
+=======================================
+INICIO FICHERO >> ./frontend/package.json
+=======================================
+{
+  "name": "frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite --host --port 3000",
+    "build": "vite build",
+    "preview": "vite preview --port 3000"
+  },
+  "dependencies": {
+    "axios": "^1.5.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.1.0",
+    "vite": "^4.4.9"
+  }
+}
+=======================================
+FIN FICHERO >> ./frontend/package.json
+=======================================
+
+=======================================
+INICIO FICHERO >> ./frontend/vite.config.js
+=======================================
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    host: true,
+    port: 3000,
+    strictPort: false
+  }
+})
+=======================================
+FIN FICHERO >> ./frontend/vite.config.js
+=======================================
+
+=======================================
+INICIO FICHERO >> ./frontend/index.html
+=======================================
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Microfrontend Starter</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+=======================================
+FIN FICHERO >> ./frontend/index.html
+=======================================
+
+=======================================
+INICIO FICHERO >> ./frontend/src/main.jsx
+=======================================
+import React from 'react'
+import { createRoot } from 'react-dom/client'
+import App from './App.jsx'
+import './styles.css'
+
+createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+)
+=======================================
+FIN FICHERO >> ./frontend/src/main.jsx
+=======================================
+
+=======================================
+INICIO FICHERO >> ./frontend/src/styles.css
+=======================================
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  margin: 0;
+  padding: 1.5rem;
+  background: #f6f8fa;
+}
+.container {
+  max-width: 760px;
+  margin: 0 auto;
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+}
+.row { margin-bottom: 0.75rem; }
+label { display:block; margin-bottom:0.25rem; font-weight:600; }
+input, select, button, textarea { padding: 0.5rem; font-size: 1rem; }
+button { cursor: pointer; border-radius: 6px; }
+=======================================
+FIN FICHERO >> ./frontend/src/styles.css
+=======================================
+
+=======================================
+INICIO FICHERO >> ./frontend/src/App.jsx
+=======================================
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+
+// Usamos la variable de entorno VITE_API_URL (vite expone VITE_* en import.meta.env)
+const API = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+
+export default function App() {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
+  const [users, setUsers] = useState([]);
+  const [role, setRole] = useState('user');
+  const [subscribe, setSubscribe] = useState(false);
+
+  useEffect(() => {
+    // refrescar lista de usuarios
+    const fetchUsers = async () => {
+      try {
+        const res = await axios.get(`${API}/users`);
+        setUsers(res.data || []);
+      } catch (e) {
+        // backend puede no estar listo durante el arranque
+        setUsers([]);
+      }
+    };
+    fetchUsers();
+  }, [message]);
+
+  const handleRegister = async () => {
+    try {
+      const res = await axios.post(`${API}/register`, { username, password });
+      setMessage(`Registered user: ${res.data.username}`);
+      setUsername(''); setPassword('');
+    } catch (err) {
+      setMessage(err.response?.data?.error || 'Error during register');
+    }
+  };
+
+  const handleLogin = async () => {
+    try {
+      const res = await axios.post(`${API}/login`, { username, password });
+      setMessage(`Logged in as: ${res.data.username}`);
+      setUsername(''); setPassword('');
+    } catch (err) {
+      setMessage(err.response?.data?.error || 'Error during login');
+    }
+  };
+
+  return (
+    <div className="container">
+      <h1 datatest-id="title">Microfrontend Starter</h1>
+
+      <div className="row">
+        <label htmlFor="username">Username</label>
+        <input id="username" datatest-id="username" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
+      </div>
+
+      <div className="row">
+        <label htmlFor="password">Password</label>
+        <input id="password" datatest-id="password" type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
+      </div>
+
+      <div className="row">
+        <label htmlFor="role">Role (select)</label>
+        <select id="role" datatest-id="roleSelect" value={role} onChange={e => setRole(e.target.value)}>
+          <option value="user">User</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+
+      <div className="row">
+        <label>
+          <input datatest-id="subscribeToggle" type="checkbox" checked={subscribe} onChange={e => setSubscribe(e.target.checked)} />
+          Subscribe to newsletter
+        </label>
+      </div>
+
+      <div style={{ marginTop: '1rem' }} className="row">
+        <button datatest-id="registerBtn" onClick={handleRegister}>Register</button>
+        <button datatest-id="loginBtn" onClick={handleLogin} style={{ marginLeft: '1rem' }}>Login</button>
+      </div>
+
+      <div style={{ marginTop: '1rem' }} datatest-id="message" className="row">{message}</div>
+
+      <hr />
+
+      <h2>Users</h2>
+      <table datatest-id="usersTable" style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr><th>#</th><th>Username</th></tr>
+        </thead>
+        <tbody>
+          {users.map(u => (
+            <tr key={u.id}><td>{u.id}</td><td>{u.username}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+=======================================
+FIN FICHERO >> ./frontend/src/App.jsx
+=======================================
+
+=======================================
+INICIO FICHERO >> ./tests/Dockerfile
+=======================================
+# Tests: Playwright
+FROM node:18-bullseye
+
+WORKDIR /app
+
+# Copiar package.json para instalar dependencias dentro del contenedor
+COPY package.json package-lock.json* ./
+
+# Instalar dependencias (incluye @playwright/test)
+RUN npm install
+
+# Instalar navegadores y dependencias del sistema necesarias para Playwright
+RUN apt-get update && apt-get install -y wget curl ca-certificates \
+    libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
+    libxkbcommon0 libgbm1 libgtk-3-0 libxcomposite1 libxdamage1 libxrandr2 libasound2 \
+    libpangocairo-1.0-0 libpango-1.0-0 libgdk-pixbuf2.0-0 libcairo2 libexpat1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instalar navegadores de Playwright
+RUN npx playwright install --with-deps
+
+# Copiar tests al contenedor
+COPY . .
+
+# Comando por defecto para ejecutar tests
+CMD ["npx", "playwright", "test", "--reporter=list"]
+=======================================
+FIN FICHERO >> ./tests/Dockerfile
+=======================================
+
+=======================================
+INICIO FICHERO >> ./tests/package.json
+=======================================
+{
+  "name": "tests",
+  "version": "1.0.0",
+  "devDependencies": {
+    "@playwright/test": "^1.54.2"
+  },
+  "scripts": {
+    "test": "npx playwright test"
+  }
+}
+=======================================
+FIN FICHERO >> ./tests/package.json
+=======================================
+
+=======================================
+INICIO FICHERO >> ./tests/playwright.config.js
+=======================================
+/**
+ * Playwright config básico.
+ * BASE_URL puede venir de environment variable BASE_URL (establecida en docker-compose)
+ */
+const { defineConfig } = require('@playwright/test');
+
+module.exports = defineConfig({
+  testDir: './tests',
+  timeout: 30_000,
+  reporter: [['list'], ['html', { open: 'never' }]],
+  use: {
+    baseURL: process.env.BASE_URL || 'http://localhost:3000',
+    headless: true,
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure'
+  },
+});
+=======================================
+FIN FICHERO >> ./tests/playwright.config.js
+=======================================
+
+=======================================
+INICIO FICHERO >> ./tests/tests/app.spec.js
+=======================================
+const { test, expect } = require('@playwright/test');
+
+test('Register and Login flow', async ({ page }) => {
+  // Navegar a la app (usa baseURL de playwright.config.js)
+  await page.goto('/');
+  // Rellenar formulario
+  await page.fill('[datatest-id="username"]', 'user1');
+  await page.fill('[datatest-id="password"]', 'pass1');
+  await page.click('[datatest-id="registerBtn"]');
+  await expect(page.locator('[datatest-id="message"]')).toContainText('Registered user');
+
+  // Intentar login
+  await page.fill('[datatest-id="username"]', 'user1');
+  await page.fill('[datatest-id="password"]', 'pass1');
+  await page.click('[datatest-id="loginBtn"]');
+  await expect(page.locator('[datatest-id="message"]')).toContainText('Logged in as');
+
+  // Ver tabla de usuarios
+  await expect(page.locator('[datatest-id="usersTable"]')).toBeVisible();
+});
+=======================================
+FIN FICHERO >> ./tests/tests/app.spec.js
+=======================================
+
+=======================================
+INICIO FICHERO >> ./README.md
+=======================================
+# Microapp Starter (Full stack + Playwright + Docker)
+
+Instrucciones rápidas:
+
+1. Construir y levantar todo (recomendado):
+   ```bash
+   docker-compose build --no-cache
+   docker-compose up
+Qué hace cada servicio:
+
+backend: Express + SQLite en puerto 4000.
+
+frontend: React + Vite en puerto 3000. Usa VITE_API_URL para conectar con backend (en docker-compose apunta a http://backend:4000).
+
+tests: Contenedor con Playwright que ejecuta npx playwright test apuntando a http://frontend:3000.
+
+Notas importantes:
+
+No montamos los tests en el contenedor para evitar sobrescribir node_modules de la build. Si editas tests localmente y quieres que el contenedor los vea, modifica docker-compose.yml (pero ten cuidado con node_modules).
+
+Si desarrollas localmente sin docker, instala dependencias en cada carpeta (npm install) y lanza backend + frontend manualmente.
+
+Si aparecen errores de módulos nativos (esbuild, sqlite3, etc.), asegúrate de reconstruir imágenes sin cache:
+docker-compose build --no-cache
+
+Comandos útiles:
+
+Ver logs: docker-compose logs -f
+
+Ejecutar tests manualmente dentro del contenedor (si ya está construido):
+docker-compose run --rm tests npx playwright test
+=======================================
+FIN FICHERO >> ./README.md
 =======================================

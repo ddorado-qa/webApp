@@ -9,6 +9,10 @@ def crear_ficheros_desde_bloques(path_entrada):
         r"=+\s*\nINICIO FICHERO >> (?P<ruta>.+?)\s*\n=+\s*\n(?P<contenido>.*?)\n=+\s*\nFIN FICHERO >> (?P=ruta)\s*\n=+",
         re.DOTALL
     )
+    patron_bloque2 = re.compile(
+        r"INICIO FICHERO >> (?P<ruta>.+?)\n(?P<contenido>.*?)\nFIN FICHERO >> (?P=ruta)",
+        re.DOTALL
+    )
 
     bloques = patron_bloque.findall(contenido)
 
