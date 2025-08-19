@@ -1,286 +1,36 @@
 =======================================
-INICIO FICHERO >> ./docker-compose.yml
+INICIO FICHERO >> ./tests/entrypointDemo.sh
 =======================================
-// Docker Compose para levantar backend, frontend y tests
-version: '3.8'
+#!/bin/bash
+set -e
 
-services:
-  backend:
-    build: ./backend
-    ports:
-      - "4000:4000"
-    volumes:
-      - ./backend:/app
-    environment:
-      - NODE_ENV=development
-    command: npm run dev
+# Lanzar Xvfb en :99
+Xvfb :99 -screen 0 1280x720x24 &
 
-  frontend:
-    build: ./frontend
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend:/app
-    environment:
-      - NODE_ENV=development
-    command: npm run dev
+# Exportar DISPLAY
+export DISPLAY=:99
 
-  tests:
-    build: ./tests
-    depends_on:
-      - backend
-      - frontend
-    command: npx playwright test
-    volumes:
-      - ./tests:/app
-    environment:
-      - BASE_URL=http://frontend:3000
-=======================================
-FIN FICHERO >> ./docker-compose.yml
-=======================================
+# Lanzar un window manager (fluxbox)
+fluxbox &
 
-=======================================
-INICIO FICHERO >> ./backend/package.json
-=======================================
-{
-  "name": "backend",
-  "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "dev": "nodemon index.js"
-  },
-  "dependencies": {
-    "express": "^4.18.2",
-    "sqlite3": "^5.1.6",
-    "cors": "^2.8.5",
-    "body-parser": "^1.20.2"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.2"
-  }
-}
-=======================================
-FIN FICHERO >> ./backend/package.json
-=======================================
+# Lanzar VNC server en el mismo display
+x11vnc -display :99 -nopw -forever -shared -rfbport 5900 &
 
-=======================================
-INICIO FICHERO >> ./backend/index.js
-=======================================
-// Backend Node.js + Express + SQLite
-const express = require('express');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-const sqlite3 = require('sqlite3').verbose();
-const app = express();
-const PORT = 4000;
+# Lanzar noVNC en 8080 apuntando al VNC
+websockify --web=/usr/share/novnc 8080 localhost:5900 &
 
-app.use(cors());
-app.use(bodyParser.json());
+# Esperar unos segundos para levantar servicios
+sleep 5
 
-// Base de datos SQLite en memoria para desarrollo
-const db = new sqlite3.Database(':memory:');
+echo "✅ Entorno gráfico listo en DISPLAY=$DISPLAY"
+echo "👉 Accede vía noVNC en: http://localhost:8080/vnc.html"
+echo "👉 O con cliente VNC en: localhost:5900"
 
-// Crear tabla de usuarios
-db.serialize(() => {
-  db.run(`CREATE TABLE users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE,
-    password TEXT
-  )`);
-});
+# Ejecutar tests Playwright en modo headed
+npx playwright test --reporter=list --headed || true
 
-// CRUD LOGIN/REGISTER
-app.post('/register', (req, res) => {
-  const { username, password } = req.body;
-  db.run(`INSERT INTO users(username,password) VALUES (?,?)`, [username,password], function(err){
-    if(err) return res.status(400).json({error: err.message});
-    res.json({id: this.lastID, username});
-  });
-});
-
-app.post('/login', (req, res) => {
-  const { username, password } = req.body;
-  db.get(`SELECT * FROM users WHERE username=? AND password=?`, [username,password], (err,row)=>{
-    if(err) return res.status(500).json({error: err.message});
-    if(!row) return res.status(401).json({error: "Invalid credentials"});
-    res.json({id: row.id, username: row.username});
-  });
-});
-
-app.get('/users', (req,res)=>{
-  db.all(`SELECT id,username FROM users`, [], (err,rows)=>{
-    if(err) return res.status(500).json({error: err.message});
-    res.json(rows);
-  });
-});
-
-app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
+# Mantener contenedor vivo en modo demo
+tail -f /dev/null
 =======================================
-FIN FICHERO >> ./backend/index.js
-=======================================
-
-=======================================
-INICIO FICHERO >> ./frontend/package.json
-=======================================
-{
-  "name": "frontend",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "axios": "^1.5.0"
-  },
-  "devDependencies": {
-    "vite": "^4.4.9",
-    "@vitejs/plugin-react": "^4.1.0"
-  }
-}
-=======================================
-FIN FICHERO >> ./frontend/package.json
-=======================================
-
-=======================================
-INICIO FICHERO >> ./frontend/vite.config.js
-=======================================
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    port: 3000
-  }
-})
-=======================================
-FIN FICHERO >> ./frontend/vite.config.js
-=======================================
-
-=======================================
-INICIO FICHERO >> ./frontend/src/main.jsx
-=======================================
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App.jsx'
-
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-)
-=======================================
-FIN FICHERO >> ./frontend/src/main.jsx
-=======================================
-
-=======================================
-INICIO FICHERO >> ./frontend/src/App.jsx
-=======================================
-import React, { useState } from 'react';
-import axios from 'axios';
-
-export default function App() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [message, setMessage] = useState('');
-
-  const handleRegister = async () => {
-    try {
-      const res = await axios.post('http://localhost:4000/register', { username, password });
-      setMessage(`Registered user: ${res.data.username}`);
-    } catch (err) {
-      setMessage(err.response?.data?.error || 'Error');
-    }
-  };
-
-  const handleLogin = async () => {
-    try {
-      const res = await axios.post('http://localhost:4000/login', { username, password });
-      setMessage(`Logged in as: ${res.data.username}`);
-    } catch (err) {
-      setMessage(err.response?.data?.error || 'Error');
-    }
-  };
-
-  return (
-    <div style={{padding: '2rem'}}>
-      <h1>Microfrontend Starter</h1>
-      <div>
-        <input datatest-id="username" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
-      </div>
-      <div>
-        <input datatest-id="password" type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
-      </div>
-      <div style={{marginTop:'1rem'}}>
-        <button datatest-id="registerBtn" onClick={handleRegister}>Register</button>
-        <button datatest-id="loginBtn" onClick={handleLogin} style={{marginLeft:'1rem'}}>Login</button>
-      </div>
-      <div style={{marginTop:'1rem'}} datatest-id="message">{message}</div>
-    </div>
-  );
-}
-=======================================
-FIN FICHERO >> ./frontend/src/App.jsx
-=======================================
-
-=======================================
-INICIO FICHERO >> ./tests/package.json
-=======================================
-{
-  "name": "tests",
-  "version": "1.0.0",
-  "scripts": {
-    "test": "npx playwright test"
-  },
-  "devDependencies": {
-    "@playwright/test": "^1.44.0"
-  }
-}
-=======================================
-FIN FICHERO >> ./tests/package.json
-=======================================
-
-=======================================
-INICIO FICHERO >> ./tests/playwright.config.js
-=======================================
-import { defineConfig } from '@playwright/test';
-
-export default defineConfig({
-  testDir: './tests',
-  use: {
-    baseURL: process.env.BASE_URL || 'http://localhost:3000',
-    headless: true,
-    screenshot: 'only-on-failure',
-    trace: 'on-first-retry'
-  },
-  retries: 1,
-  reporter: [['list'], ['html', { open: 'never' }]],
-});
-=======================================
-FIN FICHERO >> ./tests/playwright.config.js
-=======================================
-
-=======================================
-INICIO FICHERO >> ./tests/tests/app.spec.js
-=======================================
-import { test, expect } from '@playwright/test';
-
-test('Register and Login flow', async ({ page }) => {
-  await page.goto('/');
-  await page.fill('[datatest-id="username"]', 'user1');
-  await page.fill('[datatest-id="password"]', 'pass1');
-  await page.click('[datatest-id="registerBtn"]');
-  await expect(page.locator('[datatest-id="message"]')).toContainText('Registered user');
-
-  await page.fill('[datatest-id="username"]', 'user1');
-  await page.fill('[datatest-id="password"]', 'pass1');
-  await page.click('[datatest-id="loginBtn"]');
-  await expect(page.locator('[datatest-id="message"]')).toContainText('Logged in as');
-});
-=======================================
-FIN FICHERO >> ./tests/tests/app.spec.js
+FIN FICHERO >> ./tests/entrypointDemo.sh
 =======================================

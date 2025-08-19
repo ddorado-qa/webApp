@@ -2,9 +2,11 @@
   "name": "tests",
   "version": "1.0.0",
   "devDependencies": {
-    "@playwright/test": "^1.54.2"
-  },
+    "@playwright/test": "^1.54.2",
+    "playwright": "^1.54.2"  },
   "scripts": {
-    "test": "npx playwright test"
-  }
+    "test": "npx playwright test --reporter=list",
+    "test:headed": "npx playwright test --reporter=list --headed",
+    "test:demo": "./entrypointDemo.sh",
+    "test:normal": "./entrypoint.sh"  }
 }

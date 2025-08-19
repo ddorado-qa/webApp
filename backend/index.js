@@ -28,9 +28,9 @@ db.serialize(() => {
 // Registro
 app.post('/register', (req, res) => {
   const { username, password } = req.body || {};
-  if(!username || !password) return res.status(400).json({ error: 'username and password required' });
-  db.run(`INSERT INTO users(username,password) VALUES (?,?)`, [username,password], function(err){
-    if(err) return res.status(400).json({ error: err.message });
+  if (!username || !password) return res.status(400).json({ error: 'username and password required' });
+  db.run(`INSERT INTO users(username,password) VALUES (?,?)`, [username, password], function (err) {
+    if (err) return res.status(400).json({ error: err.message });
     res.json({ id: this.lastID, username });
   });
 });
@@ -38,10 +38,10 @@ app.post('/register', (req, res) => {
 // Login
 app.post('/login', (req, res) => {
   const { username, password } = req.body || {};
-  if(!username || !password) return res.status(400).json({ error: 'username and password required' });
-  db.get(`SELECT id, username FROM users WHERE username=? AND password=?`, [username,password], (err,row)=>{
-    if(err) return res.status(500).json({ error: err.message });
-    if(!row) return res.status(401).json({ error: 'Invalid credentials' });
+  if (!username || !password) return res.status(400).json({ error: 'username and password required' });
+  db.get(`SELECT id, username FROM users WHERE username=? AND password=?`, [username, password], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row) return res.status(401).json({ error: 'Invalid credentials' });
     res.json(row);
   });
 });
@@ -49,12 +49,33 @@ app.post('/login', (req, res) => {
 // List users (sin passwords)
 app.get('/users', (req, res) => {
   db.all(`SELECT id, username FROM users`, [], (err, rows) => {
-    if(err) return res.status(500).json({ error: err.message });
+    if (err) return res.status(500).json({ error: err.message });
     res.json(rows);
   });
 });
 
-// Health
-app.get('/health', (req,res) => res.json({ status: 'ok' }));
 
-app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
+// ✅ Nuevo: actualizar usuario
+app.put('/users/:id', (req, res) => {
+  const { id } = req.params;
+  const { username, password } = req.body;
+  db.run("UPDATE users SET username = ?, password = ? WHERE id = ?", [username, password, id], function (err) {
+    if (err) return res.status(400).json({ error: err.message });
+    if (this.changes === 0) return res.status(404).json({ error: 'User not found' });
+    res.json({ id, username });
+  });
+});
+
+// ✅ Nuevo: eliminar usuario
+app.delete('/users/:id', (req, res) => {
+  const { id } = req.params;
+  db.run("DELETE FROM users WHERE id = ?", [id], function (err) {
+    if (err) return res.status(400).json({ error: err.message });
+    if (this.changes === 0) return res.status(404).json({ error: 'User not found' });
+    res.json({ success: true });
+  });
+  });
+  // Health
+  app.get('/health', (req, res) => res.json({ status: 'ok' }));
+
+  app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));

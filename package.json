@@ -1,0 +1,29 @@
+{
+  "name": "microapp",
+  "version": "1.0.0",
+  "description": "Instrucciones rápidas:",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ddorado-qa/webApp.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ddorado-qa/webApp/issues"
+  },
+  "homepage": "https://github.com/ddorado-qa/webApp#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.54.2",
+    "@types/node": "^24.3.0"
+  },
+  "dependencies": {
+    "playwright": "^1.54.2"
+  }
+}
