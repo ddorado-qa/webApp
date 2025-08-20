@@ -1,147 +1,37 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-
-// Usamos la variable de entorno VITE_API_URL (vite expone VITE_* en import.meta.env)
-const API = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+// Layout con navegación y definición de rutas.
+// No elimina ninguna funcionalidad existente: la lógica CRUD original vive en UsersManager.
+import React from 'react';
+import { Routes, Route, NavLink } from 'react-router-dom';
+import Home from './pages/Home';
+import Profile from './pages/Profile';
+import Settings from './pages/Settings';
+import History from './pages/History';
+import Support from './pages/Support';
 
 export default function App() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [message, setMessage] = useState('');
-  const [users, setUsers] = useState([]);
-  const [role, setRole] = useState('user');
-  const [subscribe, setSubscribe] = useState(false);
-  const [editId, setEditId] = useState(null);
+  const linkStyle = ({ isActive }) => ({
+    marginRight: '0.75rem',
+    textDecoration: 'none',
+    fontWeight: isActive ? '700' : '400'
+  });
 
-  useEffect(() => {
-    // refrescar lista de usuarios
-    const fetchUsers = async () => {
-      try {
-        const res = await axios.get(`${API}/users`);
-        setUsers(res.data || []);
-      } catch (e) {
-        // backend puede no estar listo durante el arranque
-        setUsers([]);
-      }
-    };
-    fetchUsers();
-  }, [message]);
+  return (
+    <div style={{ padding: '1rem', fontFamily: 'system-ui, Arial, sans-serif' }}>
+      <nav style={{ marginBottom: '1rem' }}>
+        <NavLink to="/" style={linkStyle} end>Home</NavLink>
+        <NavLink to="/profile" style={linkStyle}>Profile</NavLink>
+        <NavLink to="/settings" style={linkStyle}>Settings</NavLink>
+        <NavLink to="/history" style={linkStyle}>History</NavLink>
+        <NavLink to="/support" style={linkStyle}>Support</NavLink>
+      </nav>
 
-  const handleRegister = async () => {
-    try {
-      const res = await axios.post(`${API}/register`, { username, password });
-      setMessage(`Registered user: ${res.data.username}`);
-      setUsername(''); setPassword('');
-    } catch (err) {
-      setMessage(err.response?.data?.error || 'Error during register');
-    }
-  };
-
-   const handleRegisterOrUpdate = async () => {
-    try {
-      if (editId) {
-        const res = await axios.put(`${API}/users/${editId}`, { username, password });
-        setMessage(`Updated user: ${res.data.username}`);
-      } else {
-        const res = await axios.post(`${API}/register`, { username, password });
-        setMessage(`Registered user: ${res.data.username}`);
-      }
-      setUsername('');
-      setPassword('');
-      setEditId(null);
-    } catch (err) {
-      setMessage(err.response?.data?.error || 'Error during save');
-    }
-  };
-
-
-  const handleLogin = async () => {
-    try {
-      const res = await axios.post(`${API}/login`, { username, password });
-      setMessage(`Logged in as: ${res.data.username}`);
-      setUsername(''); setPassword('');
-    } catch (err) {
-      setMessage(err.response?.data?.error || 'Error during login');
-    }
-  };
-const handleEdit = (user) => {
-    setUsername(user.username);
-    setPassword('');
-    setEditId(user.id);
-  };
-
-  const handleDelete = async (id) => {
-    try {
-      await axios.delete(`${API}/users/${id}`);
-      setMessage(`Deleted user with id: ${id}`);
-    } catch (err) {
-      setMessage(err.response?.data?.error || 'Error during delete');
-    }
-  };
-
-   return (
-    <div className="container">
-      <h1 datatest-id="title">Microfrontend Starter</h1>
-
-      <div className="row">
-        <label htmlFor="username">Username</label>
-        <input id="username" datatest-id="username" placeholder="Username"
-               value={username} onChange={e => setUsername(e.target.value)} />
-      </div>
-
-      <div className="row">
-        <label htmlFor="password">Password</label>
-        <input id="password" datatest-id="password" type="password" placeholder="Password"
-               value={password} onChange={e => setPassword(e.target.value)} />
-      </div>
-
-      <div className="row">
-        <label htmlFor="role">Role (select)</label>
-        <select id="role" datatest-id="roleSelect" value={role} onChange={e => setRole(e.target.value)}>
-          <option value="user">User</option>
-          <option value="admin">Admin</option>
-        </select>
-      </div>
-
-      <div className="row">
-        <label>
-          <input datatest-id="subscribeToggle" type="checkbox"
-                 checked={subscribe} onChange={e => setSubscribe(e.target.checked)} />
-          Subscribe to newsletter
-        </label>
-      </div>
-
-      <div style={{ marginTop: '1rem' }} className="row">
-        <button datatest-id="registerBtn" onClick={handleRegisterOrUpdate}>
-          {editId ? 'Update' : 'Register'}
-        </button>
-        <button datatest-id="loginBtn" onClick={handleLogin} style={{ marginLeft: '1rem' }}>
-          Login
-        </button>
-      </div>
-
-      <div style={{ marginTop: '1rem' }} datatest-id="message" className="row">{message}</div>
-
-      <hr />
-
-      <h2>Users</h2>
-      <table datatest-id="usersTable" style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr><th>#</th><th>Username</th><th>Actions</th></tr>
-        </thead>
-        <tbody>
-          {users.map(u => (
-            <tr key={u.id}>
-              <td>{u.id}</td>
-              <td>{u.username}</td>
-              <td>
-                <button onClick={() => handleEdit(u)}>Edit</button>
-                <button onClick={() => handleDelete(u.id)} style={{ marginLeft: '0.5rem' }}>Delete</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/history" element={<History />} />
+        <Route path="/support" element={<Support />} />
+      </Routes>
     </div>
   );
 }

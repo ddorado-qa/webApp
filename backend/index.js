@@ -1,10 +1,17 @@
-// Backend Node.js + Express + SQLite (CRUD básico para usuarios)
-// Atención: para simplicidad usamos SQLite en fichero ./data.db (persistente en volumen local)
+// Servidor Express que monta micro-rutas y mantiene compatibilidad con tu API actual.
+// No se elimina ninguna funcionalidad existente sin tu aprobación.
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+
+require('./db'); // inicializa DB y tablas
+
+const authRoutes = require('./routes/auth');   // /register, /login (rutas exactas originales)
+const usersRoutes = require('./routes/users'); // /users CRUD
+const profileRoutes = require('./routes/profile');
+const settingsRoutes = require('./routes/settings');
+const historyRoutes = require('./routes/history');
+const supportRoutes = require('./routes/support');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -12,70 +19,17 @@ const PORT = process.env.PORT || 4000;
 app.use(cors());
 app.use(bodyParser.json());
 
-// Base de datos SQLite en fichero (persistente dentro del contenedor o en tu carpeta de proyecto)
-const DB_PATH = path.join(__dirname, 'data.db');
-const db = new sqlite3.Database(DB_PATH);
+// Rutas que CONSERVAN compatibilidad con tu frontend:
+app.use('/', authRoutes);       // POST /register, POST /login
+app.use('/users', usersRoutes); // GET/PUT/DELETE
 
-// Inicializar tabla
-db.serialize(() => {
-  db.run(`CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE,
-    password TEXT
-  )`);
-});
+// Nuevos micro-backends (extensibles)
+app.use('/profile', profileRoutes);
+app.use('/settings', settingsRoutes);
+app.use('/history', historyRoutes);
+app.use('/support', supportRoutes);
 
-// Registro
-app.post('/register', (req, res) => {
-  const { username, password } = req.body || {};
-  if (!username || !password) return res.status(400).json({ error: 'username and password required' });
-  db.run(`INSERT INTO users(username,password) VALUES (?,?)`, [username, password], function (err) {
-    if (err) return res.status(400).json({ error: err.message });
-    res.json({ id: this.lastID, username });
-  });
-});
+// Health
+app.get('/health', (req, res) => res.json({ status: 'ok', service: 'core' }));
 
-// Login
-app.post('/login', (req, res) => {
-  const { username, password } = req.body || {};
-  if (!username || !password) return res.status(400).json({ error: 'username and password required' });
-  db.get(`SELECT id, username FROM users WHERE username=? AND password=?`, [username, password], (err, row) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!row) return res.status(401).json({ error: 'Invalid credentials' });
-    res.json(row);
-  });
-});
-
-// List users (sin passwords)
-app.get('/users', (req, res) => {
-  db.all(`SELECT id, username FROM users`, [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
-  });
-});
-
-
-// ✅ Nuevo: actualizar usuario
-app.put('/users/:id', (req, res) => {
-  const { id } = req.params;
-  const { username, password } = req.body;
-  db.run("UPDATE users SET username = ?, password = ? WHERE id = ?", [username, password, id], function (err) {
-    if (err) return res.status(400).json({ error: err.message });
-    if (this.changes === 0) return res.status(404).json({ error: 'User not found' });
-    res.json({ id, username });
-  });
-});
-
-// ✅ Nuevo: eliminar usuario
-app.delete('/users/:id', (req, res) => {
-  const { id } = req.params;
-  db.run("DELETE FROM users WHERE id = ?", [id], function (err) {
-    if (err) return res.status(400).json({ error: err.message });
-    if (this.changes === 0) return res.status(404).json({ error: 'User not found' });
-    res.json({ success: true });
-  });
-  });
-  // Health
-  app.get('/health', (req, res) => res.json({ status: 'ok' }));
-
-  app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
