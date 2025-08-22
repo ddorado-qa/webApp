@@ -1,46 +1,3 @@
-=======================================
-INICIO FICHERO >> ./tests/Dockerfile
-=======================================
-// Dockerfile para contenedor de tests Playwright con Xvfb, Fluxbox, x11vnc y noVNC
-FROM node:18-bullseye
-
-WORKDIR /app
-
-# Copiar package.json primero para cache
-COPY package.json package-lock.json* ./
-
-# Instalar dependencias Node
-RUN npm install
-
-# Instalar dependencias del sistema
-RUN apt-get update && apt-get install -y \
-    wget curl ca-certificates xvfb x11vnc fluxbox novnc websockify \
-    libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
-    libxkbcommon0 libgbm1 libgtk-3-0 libxcomposite1 libxdamage1 \
-    libxrandr2 libasound2 libpangocairo-1.0-0 libpango-1.0-0 \
-    libgdk-pixbuf2.0-0 libcairo2 libexpat1 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Instalar navegadores Playwright
-RUN npx playwright install --with-deps
-
-# Copiar tests y entrypoint
-COPY . .
-COPY entrypoint.sh /app/entrypoint.sh
-
-# Dar permisos ejecutables
-RUN chmod +x /app/entrypoint.sh
-
-# Ejecutar entrypoint por defecto
-ENTRYPOINT ["/app/entrypoint.sh"]
-=======================================
-FIN FICHERO >> ./tests/Dockerfile
-=======================================
-
-=======================================
-INICIO FICHERO >> ./tests/entrypoint.sh
-=======================================
-// Entrypoint para contenedor de tests con Xvfb, Fluxbox, x11vnc y noVNC
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -65,6 +22,7 @@ wait_for_x() {
 
 wait_for_fluxbox() {
   echo "⏳ Esperando a que Fluxbox esté listo..."
+  # Esperamos a que aparezca el proceso fluxbox y el socket DISPLAY responda
   until pgrep -x fluxbox >/dev/null 2>&1 && xdpyinfo -display "$DISPLAY" >/dev/null 2>&1; do
     sleep 0.2
   done
@@ -91,7 +49,7 @@ start_graphics_stack() {
     x11vnc -display "$DISPLAY" -forever -shared -nopw -rfbport 5900 -listen 0.0.0.0 -quiet >/tmp/x11vnc.log 2>&1 &
   fi
 
-  # noVNC (conectando a 0.0.0.0:5900)
+  # noVNC (corregido para escuchar en 0.0.0.0:8080 y conectar contra 0.0.0.0:5900)
   if ! pgrep -f novnc_proxy >/dev/null 2>&1; then
     /usr/share/novnc/utils/novnc_proxy --vnc 0.0.0.0:5900 --listen 0.0.0.0:8080 >/tmp/novnc.log 2>&1 &
   fi
@@ -115,6 +73,3 @@ else
   echo "✅ Contenedor en primer plano. Manteniendo entorno gráfico..."
   tail -f /dev/null
 fi
-=======================================
-FIN FICHERO >> ./tests/entrypoint.sh
-=======================================

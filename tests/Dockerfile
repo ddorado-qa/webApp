@@ -1,4 +1,3 @@
-# Tests: Playwright con soporte Xvfb + VNC + noVNC
 FROM node:18-bullseye
 
 WORKDIR /app
@@ -21,11 +20,12 @@ RUN apt-get update && apt-get install -y \
 # Instalar navegadores Playwright
 RUN npx playwright install --with-deps
 
-# Copiar tests
+# Copiar tests y entrypoint
 COPY . .
+COPY entrypoint.sh /app/entrypoint.sh
 
-# Script de arranque que inicia Xvfb, fluxbox, x11vnc y novnc + ejecuta tests
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Dar permisos ejecutables
+RUN chmod +x /app/entrypoint.sh
 
-CMD ["/entrypoint.sh"]
+# Ejecutar entrypoint por defecto
+ENTRYPOINT ["/app/entrypoint.sh"]

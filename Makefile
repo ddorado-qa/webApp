@@ -1,3 +1,4 @@
+
 # Makefile para gestionar microApp (frontends, backends, tests QA)
 # Mantiene install, hot y watch. Añade: monitor, test, report, report-open
 
@@ -94,15 +95,23 @@ monitor:
 	@echo "=== LOGS (CTRL+C para salir)==="
 	docker-compose logs -f
 
-# Ejecuta los tests dentro del contenedor QA
-test:
-	docker-compose run --rm tests npx playwright test
-
+# Ejecuta los tests UI dentro del contenedor QA con entorno gráfico
 test-ui:
-	docker-compose run --rm tests npx playwright test --ui
+	docker-compose run --service-ports --rm tests \
+		bash /app/entrypoint.sh npx playwright test --ui
 
+# Alternativa: levantar imagen con puertos publicados manualmente (VNC + noVNC)
+test-ui-run:
+	docker run --rm -p 5900:5900 -p 8080:8080 \
+		-e BASE_URL=http://localhost:3000 \
+		--name microapp-tests-local \
+		microapp-tests:latest \
+		bash /app/entrypoint.sh npx playwright test --ui
+
+# Genera reportes HTML de Playwright
 report:
 	docker-compose run --rm tests npx playwright test --reporter=html
 
 report-open:
 	open ./tests/playwright-report/index.html
+
