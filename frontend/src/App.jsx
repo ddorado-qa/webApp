@@ -1,5 +1,5 @@
 // Layout con navegación y definición de rutas.
-// No elimina ninguna funcionalidad existente: la lógica CRUD original vive en UsersManager.
+// Ahora incluye Rating sin eliminar nada anterior.
 import React from 'react';
 import { Routes, Route, NavLink } from 'react-router-dom';
 import Home from './pages/Home';
@@ -7,6 +7,7 @@ import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import History from './pages/History';
 import Support from './pages/Support';
+import Rating from './pages/Rating';
 
 export default function App() {
   const linkStyle = ({ isActive }) => ({
@@ -23,6 +24,7 @@ export default function App() {
         <NavLink to="/settings" style={linkStyle}>Settings</NavLink>
         <NavLink to="/history" style={linkStyle}>History</NavLink>
         <NavLink to="/support" style={linkStyle}>Support</NavLink>
+        <NavLink to="/rating" style={linkStyle}>Rating</NavLink>
       </nav>
 
       <Routes>
@@ -31,6 +33,7 @@ export default function App() {
         <Route path="/settings" element={<Settings />} />
         <Route path="/history" element={<History />} />
         <Route path="/support" element={<Support />} />
+        <Route path="/rating" element={<Rating />} />
       </Routes>
     </div>
   );

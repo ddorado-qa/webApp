@@ -1,9 +1,13 @@
+# Makefile para gestionar microApp (frontends, backends, tests QA)
+# Mantiene install, hot y watch. Añade: monitor, test, report, report-open
+
 # Variables
 FRONTS = dashboard-mfe admin-mfe
 BACKS  = users-api items-api api-gateway reporter
 SERVICES = $(FRONTS) $(BACKS)
+TESTS = microapp-tests
 
-.PHONY: all install up logs restart clean rebuild watch hot
+.PHONY: all install up logs restart clean rebuild watch hot monitor test test-ui report report-open
 
 # Instala npm dependencies en todos los servicios
 install:
@@ -80,3 +84,25 @@ watch:
 		fi \
 	done
 	@wait
+
+# === NUEVOS TARGETS ===
+
+# Estado y logs tail
+monitor:
+	@echo "=== STATUS ==="
+	docker-compose ps
+	@echo "=== LOGS (CTRL+C para salir)==="
+	docker-compose logs -f
+
+# Ejecuta los tests dentro del contenedor QA
+test:
+	docker-compose run --rm tests npx playwright test
+
+test-ui:
+	docker-compose run --rm tests npx playwright test --ui
+
+report:
+	docker-compose run --rm tests npx playwright test --reporter=html
+
+report-open:
+	open ./tests/playwright-report/index.html

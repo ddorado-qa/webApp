@@ -1,698 +1,117 @@
 =======================================
-INICIO FICHERO >> ./frontend/src/main.jsx
-=======================================
-// Envolvemos la app con BrowserRouter para habilitar rutas en el frontend.
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
-import App from './App';
-
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <BrowserRouter>
-    <App />
-  </BrowserRouter>
-);
-=======================================
-FIN FICHERO >> ./frontend/src/main.jsx
-=======================================
-
-=======================================
-INICIO FICHERO >> ./frontend/src/App.jsx
-=======================================
-// Layout con navegación y definición de rutas.
-// No elimina ninguna funcionalidad existente: la lógica CRUD original vive en UsersManager.
-import React from 'react';
-import { Routes, Route, NavLink } from 'react-router-dom';
-import Home from './pages/Home';
-import Profile from './pages/Profile';
-import Settings from './pages/Settings';
-import History from './pages/History';
-import Support from './pages/Support';
-
-export default function App() {
-  const linkStyle = ({ isActive }) => ({
-    marginRight: '0.75rem',
-    textDecoration: 'none',
-    fontWeight: isActive ? '700' : '400'
-  });
-
-  return (
-    <div style={{ padding: '1rem', fontFamily: 'system-ui, Arial, sans-serif' }}>
-      <nav style={{ marginBottom: '1rem' }}>
-        <NavLink to="/" style={linkStyle} end>Home</NavLink>
-        <NavLink to="/profile" style={linkStyle}>Profile</NavLink>
-        <NavLink to="/settings" style={linkStyle}>Settings</NavLink>
-        <NavLink to="/history" style={linkStyle}>History</NavLink>
-        <NavLink to="/support" style={linkStyle}>Support</NavLink>
-      </nav>
-
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/history" element={<History />} />
-        <Route path="/support" element={<Support />} />
-      </Routes>
-    </div>
-  );
-}
-=======================================
-FIN FICHERO >> ./frontend/src/App.jsx
-=======================================
-
-=======================================
-INICIO FICHERO >> ./frontend/src/pages/Home.jsx
-=======================================
-// Página Home que renderiza la funcionalidad original (CRUD + login)
-import React from 'react';
-import UsersManager from '../components/UsersManager';
-
-export default function Home() {
-  return <UsersManager />;
-}
-=======================================
-FIN FICHERO >> ./frontend/src/pages/Home.jsx
-=======================================
-
-=======================================
-INICIO FICHERO >> ./frontend/src/pages/Profile.jsx
-=======================================
-// Página de ejemplo. Puedes ampliarla según tus flujos.
-import React from 'react';
-
-export default function Profile() {
-  return (
-    <div className="container">
-      <h2>Profile</h2>
-      <p>Página de perfil de usuario (stub). Aquí puedes mostrar datos del usuario logueado.</p>
-    </div>
-  );
-}
-=======================================
-FIN FICHERO >> ./frontend/src/pages/Profile.jsx
-=======================================
-
-=======================================
-INICIO FICHERO >> ./frontend/src/pages/Settings.jsx
-=======================================
-// Página de ejemplo. Puedes ampliarla según tus flujos.
-import React from 'react';
-
-export default function Settings() {
-  return (
-    <div className="container">
-      <h2>Settings</h2>
-      <p>Página de configuración (stub). Añade preferencias de UI, notificaciones, etc.</p>
-    </div>
-  );
-}
-=======================================
-FIN FICHERO >> ./frontend/src/pages/Settings.jsx
-=======================================
-
-=======================================
-INICIO FICHERO >> ./frontend/src/pages/History.jsx
-=======================================
-// Página de ejemplo. Puedes ampliarla según tus flujos.
-import React from 'react';
-
-export default function History() {
-  return (
-    <div className="container">
-      <h2>History</h2>
-      <p>Historial de actividad (stub). Ideal para listados de acciones del usuario.</p>
-    </div>
-  );
-}
-=======================================
-FIN FICHERO >> ./frontend/src/pages/History.jsx
-=======================================
-
-=======================================
-INICIO FICHERO >> ./frontend/src/pages/Support.jsx
-=======================================
-// Página de ejemplo. Puedes ampliarla según tus flujos.
-import React from 'react';
-
-export default function Support() {
-  return (
-    <div className="container">
-      <h2>Support</h2>
-      <p>Centro de ayuda/soporte (stub). Formularios de contacto, FAQs, etc.</p>
-    </div>
-  );
-}
-=======================================
-FIN FICHERO >> ./frontend/src/pages/Support.jsx
-=======================================
-
-=======================================
-INICIO FICHERO >> ./frontend/src/components/UsersManager.jsx
-=======================================
-// Este componente contiene TODO lo que tenías en tu App.jsx original,
-// incluido el CRUD de usuarios y login. Se mantiene la compatibilidad
-// con los datatest-id usados en los tests de Playwright.
-
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-
-// Usamos la variable de entorno VITE_API_URL (vite expone VITE_* en import.meta.env)
-const API = import.meta.env.VITE_API_URL || 'http://localhost:4000';
-
-export default function UsersManager() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [message, setMessage] = useState('');
-  const [users, setUsers] = useState([]);
-  const [role, setRole] = useState('user');
-  const [subscribe, setSubscribe] = useState(false);
-  const [editId, setEditId] = useState(null);
-
-  // Refrescar lista cuando cambie message (misma lógica que tenías)
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const res = await axios.get(`${API}/users`);
-        setUsers(res.data || []);
-      } catch (e) {
-        setUsers([]);
-      }
-    };
-    fetchUsers();
-  }, [message]);
-
-  // Registrar o actualizar (mantiene compatibilidad con tu flujo)
-  const handleRegisterOrUpdate = async () => {
-    try {
-      if (editId) {
-        const res = await axios.put(`${API}/users/${editId}`, { username, password });
-        setMessage(`Updated user: ${res.data.username}`);
-      } else {
-        const res = await axios.post(`${API}/register`, { username, password });
-        setMessage(`Registered user: ${res.data.username}`);
-      }
-      setUsername('');
-      setPassword('');
-      setEditId(null);
-    } catch (err) {
-      setMessage(err.response?.data?.error || 'Error during save');
-    }
-  };
-
-  // Login
-  const handleLogin = async () => {
-    try {
-      const res = await axios.post(`${API}/login`, { username, password });
-      setMessage(`Logged in as: ${res.data.username}`);
-      setUsername('');
-      setPassword('');
-    } catch (err) {
-      setMessage(err.response?.data?.error || 'Error during login');
-    }
-  };
-
-  // Editar (cargar datos en el formulario)
-  const handleEdit = (user) => {
-    setUsername(user.username);
-    setPassword('');
-    setEditId(user.id);
-  };
-
-  // Eliminar
-  const handleDelete = async (id) => {
-    try {
-      await axios.delete(`${API}/users/${id}`);
-      setMessage(`Deleted user with id: ${id}`);
-    } catch (err) {
-      setMessage(err.response?.data?.error || 'Error during delete');
-    }
-  };
-
-  return (
-    <div className="container">
-      {/* Mantengo el mismo título y datatest-id que tus tests esperan */}
-      <h1 datatest-id="title">Microfrontend Starter</h1>
-
-      <div className="row">
-        <label htmlFor="username">Username</label>
-        <input
-          id="username"
-          datatest-id="username"
-          placeholder="Username"
-          value={username}
-          onChange={e => setUsername(e.target.value)}
-        />
-      </div>
-
-      <div className="row">
-        <label htmlFor="password">Password</label>
-        <input
-          id="password"
-          datatest-id="password"
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-        />
-      </div>
-
-      <div className="row">
-        <label htmlFor="role">Role (select)</label>
-        <select
-          id="role"
-          datatest-id="roleSelect"
-          value={role}
-          onChange={e => setRole(e.target.value)}
-        >
-          <option value="user">User</option>
-          <option value="admin">Admin</option>
-        </select>
-      </div>
-
-      <div className="row">
-        <label>
-          <input
-            datatest-id="subscribeToggle"
-            type="checkbox"
-            checked={subscribe}
-            onChange={e => setSubscribe(e.target.checked)}
-          />
-          Subscribe to newsletter
-        </label>
-      </div>
-
-      <div style={{ marginTop: '1rem' }} className="row">
-        <button datatest-id="registerBtn" onClick={handleRegisterOrUpdate}>
-          {editId ? 'Update' : 'Register'}
-        </button>
-        <button datatest-id="loginBtn" onClick={handleLogin} style={{ marginLeft: '1rem' }}>
-          Login
-        </button>
-      </div>
-
-      <div style={{ marginTop: '1rem' }} datatest-id="message" className="row">
-        {message}
-      </div>
-
-      <hr />
-
-      <h2>Users</h2>
-      <table datatest-id="usersTable" style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr><th>#</th><th>Username</th><th>Actions</th></tr>
-        </thead>
-        <tbody>
-          {users.map(u => (
-            <tr key={u.id}>
-              <td>{u.id}</td>
-              <td>{u.username}</td>
-              <td>
-                <button onClick={() => handleEdit(u)}>Edit</button>
-                <button onClick={() => handleDelete(u.id)} style={{ marginLeft: '0.5rem' }}>Delete</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-=======================================
-FIN FICHERO >> ./frontend/src/components/UsersManager.jsx
-=======================================
-
-=======================================
-INICIO FICHERO >> ./frontend/package.json
-=======================================
-// Añadimos react-router-dom como dependencia para el routing.
-// No tocamos scripts existentes que ya uses; agrega o fusiona con tu package.json real.
-{
-  "name": "frontend",
-  "version": "1.0.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview --port 3000"
-  },
-  "dependencies": {
-    "axios": "^1.6.8",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.2"
-  },
-  "devDependencies": {
-    "vite": "^4.5.3"
-  }
-}
-=======================================
-FIN FICHERO >> ./frontend/package.json
-=======================================
-
-=======================================
-INICIO FICHERO >> ./backend/db.js
-=======================================
-// Módulo de base de datos SQLite compartido por todas las rutas.
-// No elimina funcionalidades: solo extrae la lógica de conexión/creación de tabla.
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
-
-const DB_PATH = path.join(__dirname, 'data.db');
-const db = new sqlite3.Database(DB_PATH);
-
-// Inicializar tabla si no existe
-db.serialize(() => {
-  db.run(`CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE,
-    password TEXT
-  )`);
-});
-
-module.exports = db;
-=======================================
-FIN FICHERO >> ./backend/db.js
-=======================================
-
-=======================================
-INICIO FICHERO >> ./backend/routes/auth.js
-=======================================
-// Rutas de autenticación que mantienen EXACTAMENTE las mismas URLs
-// que ya usa tu frontend: POST /register y POST /login
-const express = require('express');
-const router = express.Router();
-const db = require('../db');
-
-// Registro (POST /register)
-router.post('/register', (req, res) => {
-  const { username, password } = req.body || {};
-  if (!username || !password) return res.status(400).json({ error: 'username and password required' });
-  db.run(`INSERT INTO users(username,password) VALUES (?,?)`, [username, password], function (err) {
-    if (err) return res.status(400).json({ error: err.message });
-    res.json({ id: this.lastID, username });
-  });
-});
-
-// Login (POST /login)
-router.post('/login', (req, res) => {
-  const { username, password } = req.body || {};
-  if (!username || !password) return res.status(400).json({ error: 'username and password required' });
-  db.get(`SELECT id, username FROM users WHERE username=? AND password=?`, [username, password], (err, row) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!row) return res.status(401).json({ error: 'Invalid credentials' });
-    res.json(row);
-  });
-});
-
-module.exports = router;
-=======================================
-FIN FICHERO >> ./backend/routes/auth.js
-=======================================
-
-=======================================
-INICIO FICHERO >> ./backend/routes/users.js
-=======================================
-// CRUD de usuarios bajo /users (lista, update, delete).
-// Mantiene compatibilidad con el frontend actual.
-const express = require('express');
-const router = express.Router();
-const db = require('../db');
-
-// List users (GET /users)
-router.get('/', (req, res) => {
-  db.all(`SELECT id, username FROM users`, [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
-  });
-});
-
-// Update user (PUT /users/:id)
-router.put('/:id', (req, res) => {
-  const { id } = req.params;
-  const { username, password } = req.body || {};
-  if (!username || !password) return res.status(400).json({ error: 'username and password required' });
-
-  db.run(`UPDATE users SET username = ?, password = ? WHERE id = ?`,
-    [username, password, id],
-    function (err) {
-      if (err) return res.status(400).json({ error: err.message });
-      if (this.changes === 0) return res.status(404).json({ error: 'User not found' });
-      res.json({ id, username });
-    }
-  );
-});
-
-// Delete user (DELETE /users/:id)
-router.delete('/:id', (req, res) => {
-  const { id } = req.params;
-  db.run(`DELETE FROM users WHERE id = ?`, [id], function (err) {
-    if (err) return res.status(400).json({ error: err.message });
-    if (this.changes === 0) return res.status(404).json({ error: 'User not found' });
-    res.json({ success: true });
-  });
-});
-
-module.exports = router;
-=======================================
-FIN FICHERO >> ./backend/routes/users.js
-=======================================
-
-=======================================
-INICIO FICHERO >> ./backend/routes/profile.js
-=======================================
-// Stub de micro-backend Profile para extender flujos sin romper nada.
-const express = require('express');
-const router = express.Router();
-
-// Ejemplo: GET /profile/health
-router.get('/health', (req, res) => res.json({ status: 'ok', service: 'profile' }));
-
-module.exports = router;
-=======================================
-FIN FICHERO >> ./backend/routes/profile.js
-=======================================
-
-=======================================
-INICIO FICHERO >> ./backend/routes/settings.js
-=======================================
-// Stub de micro-backend Settings
-const express = require('express');
-const router = express.Router();
-
-// Ejemplo: GET /settings/health
-router.get('/health', (req, res) => res.json({ status: 'ok', service: 'settings' }));
-
-module.exports = router;
-=======================================
-FIN FICHERO >> ./backend/routes/settings.js
-=======================================
-
-=======================================
-INICIO FICHERO >> ./backend/routes/history.js
-=======================================
-// Stub de micro-backend History
-const express = require('express');
-const router = express.Router();
-
-// Ejemplo: GET /history/health
-router.get('/health', (req, res) => res.json({ status: 'ok', service: 'history' }));
-
-module.exports = router;
-=======================================
-FIN FICHERO >> ./backend/routes/history.js
-=======================================
-
-=======================================
-INICIO FICHERO >> ./backend/routes/support.js
-=======================================
-// Stub de micro-backend Support
-const express = require('express');
-const router = express.Router();
-
-// Ejemplo: GET /support/health
-router.get('/health', (req, res) => res.json({ status: 'ok', service: 'support' }));
-
-module.exports = router;
-=======================================
-FIN FICHERO >> ./backend/routes/support.js
-=======================================
-
-=======================================
-INICIO FICHERO >> ./backend/index.js
-=======================================
-// Servidor Express que monta micro-rutas y mantiene compatibilidad con tu API actual.
-// No se elimina ninguna funcionalidad existente sin tu aprobación.
-const express = require('express');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-
-require('./db'); // inicializa DB y tablas
-
-const authRoutes = require('./routes/auth');   // /register, /login (rutas exactas originales)
-const usersRoutes = require('./routes/users'); // /users CRUD
-const profileRoutes = require('./routes/profile');
-const settingsRoutes = require('./routes/settings');
-const historyRoutes = require('./routes/history');
-const supportRoutes = require('./routes/support');
-
-const app = express();
-const PORT = process.env.PORT || 4000;
-
-app.use(cors());
-app.use(bodyParser.json());
-
-// Rutas que CONSERVAN compatibilidad con tu frontend:
-app.use('/', authRoutes);       // POST /register, POST /login
-app.use('/users', usersRoutes); // GET/PUT/DELETE
-
-// Nuevos micro-backends (extensibles)
-app.use('/profile', profileRoutes);
-app.use('/settings', settingsRoutes);
-app.use('/history', historyRoutes);
-app.use('/support', supportRoutes);
-
-// Health
-app.get('/health', (req, res) => res.json({ status: 'ok', service: 'core' }));
-
-app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
-=======================================
-FIN FICHERO >> ./backend/index.js
-=======================================
-
-=======================================
-INICIO FICHERO >> ./frontend/index.html
-=======================================
-// (Solo si tu plantilla no lo tenía ya) Asegura el contenedor root para React.
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Microfrontend Starter</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
-</html>
-=======================================
-FIN FICHERO >> ./frontend/index.html
-=======================================
-
-=======================================
-INICIO FICHERO >> ./tests/entrypoint.sh
+INICIO FICHERO >> .\tests\entrypoint.sh
 =======================================
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Silenciar avisos de Fluxbox creando un fichero de configuración completo antes de lanzarlo.
+# EntryPoint robusto para entorno gráfico dentro del contenedor de tests.
+# - Arranca Xvfb + fluxbox + x11vnc + noVNC (bind 0.0.0.0)
+# - Si se lanza el comando con --ui, arranca el stack gráfico y
+#   ejecuta el comando (Playwright UI) en background, tail de logs y espera.
+# - Si no se pasa --ui y hay argumentos, ejecuta el comando normalmente (exec).
+# - Si no hay argumentos, deja el stack gráfico arriba y mantiene el contenedor vivo.
+#
+# Nota operativa:
+# - Para que VNC / noVNC estén accesibles desde tu Mac **usa docker-compose up** (o
+#   docker-compose run --service-ports ...) para garantizar que los puertos del servicio
+#   estén publicados en el host.
+# - URLs habituales:
+#     VNC:   vnc://localhost:5900
+#     noVNC: http://localhost:8080/vnc.html?autoconnect=true
+
 export DISPLAY=${DISPLAY:-:99}
 export HOME=${HOME:-/root}
 mkdir -p "$HOME/.fluxbox"
 
+# Configuración mínima Fluxbox
 cat > "$HOME/.fluxbox/init" <<'EOF'
-session.configVersion:     15
-session.ignoreBorder:      false
-session.forcePseudoTransparency: false
-session.colorsPerChannel:  4
-session.doubleClickInterval: 250
-session.tabPadding:        0
-session.styleOverlay:      false
-session.slitlistFile:      ~/.fluxbox/slitlist
-session.appsFile:          ~/.fluxbox/apps
-session.tabsAttachArea:    Window
-session.cacheLife:         5
-session.cacheMax:          200
-session.autoRaiseDelay:    250
-
-session.screen0.opaqueMove:            true
-session.screen0.fullMaximization:      false
-session.screen0.maxIgnoreIncrement:    true
-session.screen0.maxDisableMove:        false
-session.screen0.maxDisableResize:      false
-session.screen0.workspacewarping:      true
-session.screen0.showwindowposition:    true
-session.screen0.autoRaise:             false
-session.screen0.clickRaises:           true
-session.screen0.defaultDeco:           NORMAL
-session.screen0.tab.placement:         TopLeft
-session.screen0.windowMenu:            ~/.fluxbox/windowmenu
-session.screen0.noFocusWhileTypingDelay: 0
-session.screen0.workspaces:            1
-session.screen0.edgeSnapThreshold:     10
-session.screen0.window.focus.alpha:    255
-session.screen0.window.unfocus.alpha:  200
-session.screen0.menu.alpha:            255
-session.screen0.menuDelay:             200
-session.screen0.tab.width:             64
-session.screen0.tooltipDelay:          500
-session.screen0.allowRemoteActions:    true
-session.screen0.clientMenu.usePixmap:  true
-session.screen0.tabs.usePixmap:        true
-session.screen0.tabs.maxOver:          false
-session.screen0.tabs.intitlebar:       true
-session.screen0.focusModel:            ClickFocus
-session.screen0.tabFocusModel:         ClickToTabFocus
-session.screen0.focusNewWindows:       true
-session.screen0.focusSameHead:         false
-session.screen0.rowPlacementDirection: LeftToRight
-session.screen0.colPlacementDirection: TopToBottom
-session.screen0.windowPlacement:       RowSmartPlacement
+session.configVersion: 15
+session.screen0.workspaces: 1
+session.screen0.defaultDeco: NORMAL
 EOF
 
-# Lanzar X virtual, Fluxbox, VNC y noVNC
-if ! pgrep Xvfb >/dev/null 2>&1; then
-  Xvfb "$DISPLAY" -screen 0 1920x1080x24 -ac +extension RANDR +extension RENDER +extension GLX &
-  sleep 0.5
-fi
+log_tail_files=(/tmp/playwright.log /tmp/novnc.log /tmp/x11vnc.log /tmp/fluxbox.log)
 
-fluxbox >/tmp/fluxbox.log 2>&1 &
+wait_for_x() {
+  until xdpyinfo -display "$DISPLAY" >/dev/null 2>&1; do
+    sleep 0.2
+  done
+}
 
-# Arranca x11vnc en :99 y el proxy web noVNC en :8080 -> 5900
-x11vnc -display "$DISPLAY" -forever -shared -nopw -rfbport 5900 -quiet >/tmp/x11vnc.log 2>&1 &
-/usr/share/novnc/utils/novnc_proxy --vnc localhost:5900 --listen 8080 >/tmp/novnc.log 2>&1 &
+start_graphics_stack() {
+  echo "🔹 Iniciando entorno gráfico (Xvfb + Fluxbox + x11vnc + noVNC)..."
 
-# Ejecuta tus tests si existe script, si no, deja el contenedor vivo para debugging.
-if [ -f /app/run-tests.sh ]; then
-  bash /app/run-tests.sh
+  # Xvfb
+  if ! pgrep -x Xvfb >/dev/null 2>&1; then
+    Xvfb "$DISPLAY" -screen 0 1920x1080x24 -ac +extension RANDR +extension RENDER +extension GLX >/tmp/xvfb.log 2>&1 &
+  fi
+  echo "⏳ Esperando a que Xvfb responda en ${DISPLAY}..."
+  wait_for_x
+  echo "✅ Xvfb listo"
+
+  # Fluxbox
+  if ! pgrep -x fluxbox >/dev/null 2>&1; then
+    fluxbox >/tmp/fluxbox.log 2>&1 &
+  fi
+  echo "⏳ Esperando a que fluxbox arranque..."
+  local tries=0
+  while ! pgrep -x fluxbox >/dev/null 2>&1 && [ $tries -lt 50 ]; do
+    sleep 0.1; tries=$((tries+1))
+  done
+  echo "✅ Fluxbox iniciado (logs: /tmp/fluxbox.log)"
+
+  # x11vnc
+  if ! pgrep -x x11vnc >/dev/null 2>&1; then
+    x11vnc -display "$DISPLAY" -forever -shared -nopw -rfbport 5900 -listen 0.0.0.0 -quiet >/tmp/x11vnc.log 2>&1 &
+    sleep 0.2
+  fi
+  echo "🔹 x11vnc iniciado en puerto 5900 (logs: /tmp/x11vnc.log)"
+
+  # noVNC
+  if ! pgrep -f novnc_proxy >/dev/null 2>&1; then
+    if [ -x /usr/share/novnc/utils/novnc_proxy ]; then
+      /usr/share/novnc/utils/novnc_proxy --vnc localhost:5900 --listen 0.0.0.0:8080 >/tmp/novnc.log 2>&1 &
+    else
+      websockify --web=/usr/share/novnc 8080 localhost:5900 >/tmp/novnc.log 2>&1 &
+    fi
+    sleep 0.2
+  fi
+  echo "🔹 noVNC iniciado en puerto 8080 (logs: /tmp/novnc.log)"
+
+  echo "✅ Entorno gráfico listo"
+  echo "✅ VNC:   vnc://localhost:5900"
+  echo "✅ noVNC: http://localhost:8080/vnc.html?autoconnect=true"
+}
+
+safe_touch_and_tail() {
+  for f in "${log_tail_files[@]}"; do
+    : > "$f" 2>/dev/null || true
+  done
+  tail -F "${log_tail_files[@]}" &
+  TAIL_PID=$!
+}
+
+# === Lógica principal ===
+if [[ $# -gt 0 ]]; then
+  if [[ "$*" == *"--ui"* ]]; then
+    start_graphics_stack
+    safe_touch_and_tail
+    echo "👉 Ejecutando comando en background: $*"
+    "$@" > /tmp/playwright.log 2>&1 &
+    CMD_PID=$!
+    wait $CMD_PID
+    EXIT_CODE=$?
+    echo "👉 Comando finalizado con código: $EXIT_CODE"
+    exit $EXIT_CODE
+  else
+    exec "$@"
+  fi
 else
-  echo "Entorno gráfico listo en VNC :5900 y noVNC :8080. Dejando el contenedor en primer plano."
-  tail -f /dev/null
+  start_graphics_stack
+  safe_touch_and_tail
+  echo "✅ Entorno gráfico corriendo. Manteniendo contenedor en primer plano."
+  wait $TAIL_PID
 fi
 =======================================
-FIN FICHERO >> ./tests/entrypoint.sh
+FIN FICHERO >> .\tests\entrypoint.sh
 =======================================
-
-=======================================
-INICIO FICHERO >> ./README-NOTAS.txt
-=======================================
-// Notas rápidas de integración (sin eliminar nada):
-// 1) Frontend:
-//    - Añadimos react-router-dom. Instala dependencias:
-//        $ cd frontend && npm install
-//    - VITE_API_URL ya está soportada (por defecto http://localhost:4000).
-//
-// 2) Backend:
-//    - Estructurado en rutas modulares. Las rutas originales /register, /login y /users siguen funcionando.
-//    - Arranca en puerto 4000 (expuesto en docker-compose).
-//
-// 3) Tests / noVNC / VNC:
-//    - El nuevo ./tests/entrypoint.sh crea un ~/.fluxbox/init completo para evitar los avisos
-//      “Failed to read: session.* Setting default value”.
-//    - El servicio tests en docker-compose ya llama a /app/entrypoint.sh, por lo que al
-//      montar ./tests como volumen, usará este script automáticamente.
-//
-// 4) Rutas nuevas (extensibles) de ejemplo en backend:
-//    GET /profile/health
-//    GET /settings/health
-//    GET /history/health
-//    GET /support/health
-//
-// 5) Nada existente se elimina. El CRUD y login se mantienen en UsersManager (Home).
-=======================================
-FIN FICHERO >> ./README-NOTAS.txt
-=======================================
-
-Ninguna funcionalidad existente será eliminada sin tu aprobación explícita.
-TODO EL CODIGO DENTRO DEL MISMO MARKDOWN

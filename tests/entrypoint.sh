@@ -1,77 +1,75 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Silenciar avisos de Fluxbox creando un fichero de configuración completo antes de lanzarlo.
 export DISPLAY=${DISPLAY:-:99}
 export HOME=${HOME:-/root}
 mkdir -p "$HOME/.fluxbox"
 
+# Configuración mínima Fluxbox
 cat > "$HOME/.fluxbox/init" <<'EOF'
-session.configVersion:     15
-session.ignoreBorder:      false
-session.forcePseudoTransparency: false
-session.colorsPerChannel:  4
-session.doubleClickInterval: 250
-session.tabPadding:        0
-session.styleOverlay:      false
-session.slitlistFile:      ~/.fluxbox/slitlist
-session.appsFile:          ~/.fluxbox/apps
-session.tabsAttachArea:    Window
-session.cacheLife:         5
-session.cacheMax:          200
-session.autoRaiseDelay:    250
-
-session.screen0.opaqueMove:            true
-session.screen0.fullMaximization:      false
-session.screen0.maxIgnoreIncrement:    true
-session.screen0.maxDisableMove:        false
-session.screen0.maxDisableResize:      false
-session.screen0.workspacewarping:      true
-session.screen0.showwindowposition:    true
-session.screen0.autoRaise:             false
-session.screen0.clickRaises:           true
-session.screen0.defaultDeco:           NORMAL
-session.screen0.tab.placement:         TopLeft
-session.screen0.windowMenu:            ~/.fluxbox/windowmenu
-session.screen0.noFocusWhileTypingDelay: 0
-session.screen0.workspaces:            1
-session.screen0.edgeSnapThreshold:     10
-session.screen0.window.focus.alpha:    255
-session.screen0.window.unfocus.alpha:  200
-session.screen0.menu.alpha:            255
-session.screen0.menuDelay:             200
-session.screen0.tab.width:             64
-session.screen0.tooltipDelay:          500
-session.screen0.allowRemoteActions:    true
-session.screen0.clientMenu.usePixmap:  true
-session.screen0.tabs.usePixmap:        true
-session.screen0.tabs.maxOver:          false
-session.screen0.tabs.intitlebar:       true
-session.screen0.focusModel:            ClickFocus
-session.screen0.tabFocusModel:         ClickToTabFocus
-session.screen0.focusNewWindows:       true
-session.screen0.focusSameHead:         false
-session.screen0.rowPlacementDirection: LeftToRight
-session.screen0.colPlacementDirection: TopToBottom
-session.screen0.windowPlacement:       RowSmartPlacement
+session.configVersion: 15
+session.screen0.workspaces: 1
+session.screen0.defaultDeco: NORMAL
 EOF
 
-# Lanzar X virtual, Fluxbox, VNC y noVNC
-if ! pgrep Xvfb >/dev/null 2>&1; then
-  Xvfb "$DISPLAY" -screen 0 1920x1080x24 -ac +extension RANDR +extension RENDER +extension GLX &
-  sleep 0.5
-fi
+wait_for_x() {
+  echo "⏳ Esperando a que Xvfb esté listo..."
+  until xdpyinfo -display "$DISPLAY" >/dev/null 2>&1; do
+    sleep 0.2
+  done
+  echo "✅ Xvfb listo"
+}
 
-fluxbox >/tmp/fluxbox.log 2>&1 &
+wait_for_fluxbox() {
+  echo "⏳ Esperando a que Fluxbox esté listo..."
+  # Esperamos a que aparezca el proceso fluxbox y el socket DISPLAY responda
+  until pgrep -x fluxbox >/dev/null 2>&1 && xdpyinfo -display "$DISPLAY" >/dev/null 2>&1; do
+    sleep 0.2
+  done
+  echo "✅ Fluxbox listo"
+}
 
-# Arranca x11vnc en :99 y el proxy web noVNC en :8080 -> 5900
-x11vnc -display "$DISPLAY" -forever -shared -nopw -rfbport 5900 -quiet >/tmp/x11vnc.log 2>&1 &
-/usr/share/novnc/utils/novnc_proxy --vnc localhost:5900 --listen 8080 >/tmp/novnc.log 2>&1 &
+start_graphics_stack() {
+  echo "🔹 Iniciando entorno gráfico (Xvfb + Fluxbox + x11vnc + noVNC)..."
 
-# Ejecuta tus tests si existe script, si no, deja el contenedor vivo para debugging.
-if [ -f /app/run-tests.sh ]; then
-  bash /app/run-tests.sh
+  # Xvfb
+  if ! pgrep -x Xvfb >/dev/null 2>&1; then
+    Xvfb "$DISPLAY" -screen 0 1920x1080x24 -ac +extension RANDR +extension RENDER +extension GLX &
+  fi
+  wait_for_x
+
+  # Fluxbox
+  if ! pgrep -x fluxbox >/dev/null 2>&1; then
+    fluxbox >/tmp/fluxbox.log 2>&1 &
+  fi
+  wait_for_fluxbox
+
+  # x11vnc
+  if ! pgrep -x x11vnc >/dev/null 2>&1; then
+    x11vnc -display "$DISPLAY" -forever -shared -nopw -rfbport 5900 -listen 0.0.0.0 -quiet >/tmp/x11vnc.log 2>&1 &
+  fi
+
+  # noVNC
+  if ! pgrep -f novnc_proxy >/dev/null 2>&1; then
+    /usr/share/novnc/utils/novnc_proxy --vnc localhost:5900 --listen 0.0.0.0:8080 >/tmp/novnc.log 2>&1 &
+  fi
+
+  echo "✅ Entorno gráfico listo para Playwright"
+  echo "✅ VNC: vnc://localhost:5900"
+  echo "✅ noVNC: http://localhost:8080/vnc.html?autoconnect=true"
+}
+
+# === Lógica principal ===
+if [[ $# -gt 0 ]]; then
+  # Si hay argumentos y contienen --ui, levanta entorno gráfico
+  if [[ "$*" == *"--ui"* ]]; then
+    start_graphics_stack
+  fi
+  echo "👉 Ejecutando comando: $*"
+  exec "$@"
 else
-  echo "Entorno gráfico listo en VNC :5900 y noVNC :8080. Dejando el contenedor en primer plano."
+  # Sin argumentos: solo levantamos entorno gráfico y dejamos contenedor en primer plano
+  start_graphics_stack
+  echo "✅ Contenedor en primer plano. Manteniendo entorno gráfico..."
   tail -f /dev/null
 fi

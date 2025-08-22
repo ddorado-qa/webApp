@@ -1,8 +1,23 @@
-// Stub de micro-backend Settings
+// Configuración global simulada (para demo)
 const express = require('express');
 const router = express.Router();
 
-// Ejemplo: GET /settings/health
-router.get('/health', (req, res) => res.json({ status: 'ok', service: 'settings' }));
+// Memoria temporal (podrías persistirlo en DB si quieres)
+let settings = {
+  darkMode: false,
+  language: 'en',
+  notifications: true,
+};
+
+// GET /settings
+router.get('/', (req, res) => {
+  res.json(settings);
+});
+
+// PUT /settings
+router.put('/', (req, res) => {
+  settings = { ...settings, ...req.body };
+  res.json(settings);
+});
 
 module.exports = router;

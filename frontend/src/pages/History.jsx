@@ -1,11 +1,28 @@
-// Página de ejemplo. Puedes ampliarla según tus flujos.
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 export default function History() {
+  const [history, setHistory] = useState([]);
+
+  useEffect(() => {
+    fetch('http://localhost:4000/history')
+      .then(res => res.json())
+      .then(data => setHistory(data));
+  }, []);
+
   return (
-    <div className="container">
+    <div>
       <h2>History</h2>
-      <p>Historial de actividad (stub). Ideal para listados de acciones del usuario.</p>
+      {history.length === 0 ? (
+        <p>No actions recorded.</p>
+      ) : (
+        <ul>
+          {history.map(item => (
+            <li key={item.id}>
+              [{item.timestamp}] User {item.userId}: {item.action}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
