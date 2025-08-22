@@ -23,9 +23,11 @@ RUN npx playwright install --with-deps
 # Copiar tests y entrypoint
 COPY . .
 COPY entrypoint.sh /app/entrypoint.sh
+COPY entrypoint_silence.sh /app/entrypoint_silence.sh
 
 # Dar permisos ejecutables
 RUN chmod +x /app/entrypoint.sh
+RUN chmod +x /app/entrypoint_silence.sh
 
 # Ejecutar entrypoint por defecto
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["/app/entrypoint_silence.sh"]

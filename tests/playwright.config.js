@@ -9,7 +9,6 @@ module.exports = defineConfig({
   timeout: 30_000,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL:  'http://frontend:3000',
     headless: true,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure'

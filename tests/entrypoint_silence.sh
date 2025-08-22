@@ -1,6 +1,3 @@
-=======================================
-INICIO FICHERO >> ./tests/entrypoint_silence.sh
-=======================================
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -80,6 +77,3 @@ else
   echo "✅ Contenedor en primer plano. Manteniendo entorno gráfico..."
   tail -f /dev/null
 fi
-=======================================
-FIN FICHERO >> ./tests/entrypoint_silence.sh
-=======================================

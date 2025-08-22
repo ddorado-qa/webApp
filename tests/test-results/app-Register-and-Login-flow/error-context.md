@@ -1,0 +1,41 @@
+# Page snapshot
+
+```yaml
+- text: // (Solo si tu plantilla no lo tenía ya) Asegura el contenedor root para React.
+- navigation:
+  - link "Home":
+    - /url: /
+  - link "Profile":
+    - /url: /profile
+  - link "Settings":
+    - /url: /settings
+  - link "History":
+    - /url: /history
+  - link "Support":
+    - /url: /support
+  - link "Rating":
+    - /url: /rating
+- heading "Microfrontend Starter" [level=1]
+- text: Username
+- textbox "Username": user1
+- text: Password
+- textbox "Password": pass1
+- text: Role (select)
+- combobox "Role (select)":
+  - option "User" [selected]
+  - option "Admin"
+- checkbox "Subscribe to newsletter"
+- text: Subscribe to newsletter
+- button "Register"
+- button "Login"
+- text: Error during save
+- separator
+- heading "Users" [level=2]
+- table:
+  - rowgroup:
+    - row "# Username Actions":
+      - cell "#"
+      - cell "Username"
+      - cell "Actions"
+  - rowgroup
+```
